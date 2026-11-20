@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.DS_Store
+.venv/
+*.mov
+10_neuromet_slm_multi_expert_engine/papers/*.pdf

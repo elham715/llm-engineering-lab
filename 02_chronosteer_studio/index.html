@@ -1,0 +1,3258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChronoSteer Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #000000;
+      --fg: #D0D7DE;
+      --bright: #F0F6FC;
+      --muted: #6E7681;
+      --dim: #262B33;
+      --ghost: #353B45;
+      --coral: #EF4444;
+      --coral-dim: #C93B31;
+      --cyan: #58A6FF;
+      --green: #22C55E;
+      --gold: #EAB308;
+      --mono: 'IBM Plex Mono', 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+      --lh: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--mono);
+      font-size: 13px;
+      overflow: hidden;
+    }
+
+    .viewport {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      position: relative;
+    }
+
+    /* Main Centered Scrollable Stage */
+    .stage-scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 46px 24px 520px 24px;
+      position: relative;
+      scrollbar-width: thin;
+      scrollbar-color: #1F242C #000;
+    }
+
+    /* 5-Column Instrument Grid */
+    .instrument-grid {
+      position: relative;
+      width: 1060px;
+      max-width: 100%;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 30px 66px 96px 590px 240px;
+      column-gap: 10px;
+      align-items: start;
+    }
+
+    /* Col 1: Line Numbers */
+    .col-ruler {
+      position: relative;
+      height: 100%;
+    }
+    .ruler-num {
+      position: absolute;
+      right: 4px;
+      height: var(--lh);
+      line-height: var(--lh);
+      font-size: 9.5px;
+      color: #484F58;
+      text-align: right;
+    }
+
+    /* Col 2: Multi-Line Span Brackets ([ 3 .38) */
+    .col-brackets {
+      position: relative;
+      height: 100%;
+    }
+    .bracket-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    .bracket-group {
+      cursor: pointer;
+    }
+    .bracket-group:hover text {
+      fill: var(--bright);
+    }
+
+    /* Col 3: 10-Segment Dense LED Attention Rail */
+    .col-leds {
+      position: relative;
+      height: 100%;
+    }
+    .led-row {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: var(--lh);
+      display: flex;
+      align-items: center;
+      gap: 2.5px;
+      cursor: pointer;
+      padding-left: 2px;
+    }
+    .led-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .led-cell {
+      width: 5px;
+      height: 7px;
+      background: #14171C;
+      transition: background 0.12s;
+    }
+    .led-tick {
+      margin-left: auto;
+      width: 4px;
+      height: 1px;
+      background: #484F58;
+    }
+
+    /* Col 4: Central Monospace Prose Canvas */
+    .col-prose {
+      position: relative;
+      z-index: 5;
+    }
+    .prose-text {
+      font-size: 13px;
+      line-height: var(--lh);
+      color: var(--fg);
+      letter-spacing: 0.005em;
+      white-space: pre-wrap;
+      word-break: break-word;
+      position: relative;
+      z-index: 6;
+    }
+    .tok {
+      display: inline;
+      cursor: pointer;
+      position: relative;
+      padding: 1px 0;
+      transition: color 0.1s, background 0.1s;
+    }
+    .tok:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .tok.future {
+      color: var(--ghost);
+    }
+    .tok.future:hover {
+      color: #8B949E;
+    }
+    .tok.pinned {
+      background: rgba(255, 255, 255, 0.12);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+      color: var(--bright);
+    }
+    .tok.echoed {
+      color: var(--bright);
+      text-decoration: underline;
+      text-decoration-color: rgba(239, 68, 68, 0.55);
+      text-underline-offset: 3px;
+    }
+
+    /* Inline Crosshair Reticle ◎ */
+    .inline-reticle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+      margin-left: 2px;
+      cursor: ns-resize;
+      position: relative;
+      z-index: 15;
+    }
+
+    /* Full-Stage Straight Laser Ray & Margin Trace SVG */
+    .rays-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 8;
+      overflow: visible;
+    }
+
+    /* Col 5: Floating Right Margin Realization Tags (◐ mode: action 90%) */
+    .col-margin {
+      position: relative;
+      height: 100%;
+      z-index: 9;
+    }
+    .margin-tag {
+      position: absolute;
+      left: 6px;
+      height: var(--lh);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .margin-tag:hover {
+      opacity: 0.85;
+    }
+
+    /* Cursor-Anchored Floating Radial Protractor Layer */
+    .dial-anchor {
+      position: absolute;
+      pointer-events: none;
+      z-index: 25;
+      overflow: visible;
+    }
+    .dial-anchor svg {
+      pointer-events: none;
+      overflow: visible;
+    }
+    .dial-hit,
+    .dial-ball,
+    .dial-spoke,
+    .dial-sector {
+      pointer-events: all;
+    }
+    .dial-spoke,
+    .dial-sector {
+      cursor: pointer;
+    }
+    .dial-spoke:hover text,
+    .dial-sector:hover text {
+      fill: var(--bright);
+    }
+    .dial-micro-actions {
+      position: absolute;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      font-size: 10px;
+      color: var(--muted);
+      pointer-events: auto;
+      white-space: nowrap;
+    }
+    .dial-micro-btn {
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .dial-micro-btn:hover {
+      color: var(--fg);
+    }
+    .wheel-ghost-preview {
+      color: rgba(34, 197, 94, 0.78);
+      border-bottom: 1px dashed rgba(34, 197, 94, 0.45);
+      pointer-events: none;
+    }
+
+    /* Floating Micro-HUD Footer (Exact Image 1 Bottom Strip) */
+    .micro-hud {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.88);
+      padding: 5px 16px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-size: 11px;
+      color: var(--muted);
+      z-index: 40;
+      white-space: nowrap;
+    }
+    .hud-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .hud-btn {
+      cursor: pointer;
+      color: var(--muted);
+      transition: color 0.12s;
+    }
+    .hud-btn:hover {
+      color: var(--bright);
+    }
+    .hud-btn.active {
+      color: var(--coral);
+    }
+    .hud-val {
+      color: var(--fg);
+    }
+    .hud-dim {
+      color: #484F58;
+    }
+
+    /* Borderless Minimal Overlay Modals (Top-K, 3x3 Tree, Prompt, Custom Axis) */
+    .overlay-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .overlay-backdrop.open {
+      display: flex;
+    }
+    .overlay-card {
+      background: #030406;
+      border: 1px solid #222730;
+      padding: 20px 24px;
+      width: 780px;
+      max-width: 94vw;
+      max-height: 86vh;
+      overflow-y: auto;
+      color: var(--fg);
+    }
+    .overlay-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid #181C22;
+      font-size: 11.5px;
+      letter-spacing: 0.06em;
+    }
+    .flat-btn {
+      background: #080A0E;
+      color: var(--fg);
+      border: 1px solid #2D333B;
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      cursor: pointer;
+    }
+    .flat-btn:hover {
+      border-color: var(--fg);
+    }
+    .flat-btn.coral {
+      border-color: var(--coral);
+      color: var(--coral);
+    }
+    .flat-btn.green {
+      border-color: var(--green);
+      color: var(--green);
+    }
+    input[type="text"], textarea, select {
+      background: #000000;
+      color: var(--fg);
+      border: 1px solid #262B33;
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 7px 10px;
+      outline: none;
+      user-select: text;
+    }
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      line-height: 1.6;
+    }
+
+    .topk-row {
+      display: grid;
+      grid-template-columns: 150px 1fr 150px;
+      align-items: center;
+      gap: 12px;
+      padding: 7px 8px;
+      cursor: pointer;
+      border-bottom: 1px solid #0E1116;
+      font-size: 12px;
+    }
+    .topk-row:hover {
+      background: #0A0E14;
+    }
+    .topk-track {
+      height: 5px;
+      background: #141820;
+    }
+    .topk-fill {
+      height: 100%;
+      background: var(--cyan);
+    }
+    .topk-row:first-child .topk-fill {
+      background: var(--green);
+    }
+
+    .offline-banner {
+      position: fixed;
+      top: 10px;
+      right: 16px;
+      font-size: 10.5px;
+      color: var(--coral);
+      background: rgba(20, 4, 4, 0.9);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      padding: 4px 10px;
+      z-index: 90;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<div class="viewport">
+  <div class="offline-banner" id="offlineBanner">sandboxed preview — open <b>http://127.0.0.1:8765</b> in Chrome/Safari for live GPT-2</div>
+
+  <!-- PURE #000000 CENTERED STAGE -->
+  <div class="stage-scroll" id="stageScroll">
+    <div class="instrument-grid" id="instrumentGrid">
+      <!-- SVG Overlay for Straight Laser Rays + Margin Trace -->
+      <svg class="rays-svg" id="raysSvg"></svg>
+
+      <!-- Col 1: Line Numbers (1, 5, 10...) -->
+      <div class="col-ruler" id="colRuler"></div>
+
+      <!-- Col 2: Span Brackets ([ 4 .29) -->
+      <div class="col-brackets" id="colBrackets">
+        <svg class="bracket-svg" id="bracketSvg"></svg>
+      </div>
+
+      <!-- Col 3: 10-LED Attention Matrix Rail -->
+      <div class="col-leds" id="colLeds"></div>
+
+      <!-- Col 4: Central Monospace Prose + Inline ◎ Reticle -->
+      <div class="col-prose" id="colProse">
+        <div class="prose-text" id="proseText"></div>
+      </div>
+
+      <!-- Col 5: Floating Right-Margin Realization Tags (◐ mode: action 90%) -->
+      <div class="col-margin" id="colMargin"></div>
+
+      <!-- Cursor-Anchored Dual-State Radial Protractor -->
+      <div class="dial-anchor" id="dialAnchor" style="display: none;">
+        <svg id="dialSvg" width="380" height="230" viewBox="-190 -16 380 230"></svg>
+        <div class="dial-micro-actions" id="dialMicroActions" style="top: 196px; left: 190px;"></div>
+      </div>
+
+      <!-- Inline Candidate Token Picker Strip anchored cleanly under ◎ when Dial is closed -->
+      <div id="inlineCandStrip" style="display:none; position:absolute; z-index:22; background:rgba(0,0,0,0.92); padding:4px 8px; border-left:1px solid #2D333B; font-size:11px; white-space:nowrap;"></div>
+    </div>
+  </div>
+
+  <!-- MINIMAL FLOATING BOTTOM MICRO-HUD (IMAGE 1 STYLE) -->
+  <footer class="micro-hud" id="microHud">
+    <span class="hud-item" title="Last step latency">
+      <span style="color:#484F58;">&gt;</span>
+      <span class="hud-val" id="hudLatency">--ms/t</span>
+    </span>
+
+    <span class="hud-btn" id="hudGenBtn" title="Stream / Pause generation">
+      <span id="hudGenIcon" style="color:var(--coral);">▼</span>
+      <span id="hudGenTxt" class="hud-val">generate</span>
+    </span>
+
+    <span class="hud-btn" id="hudAutoBtn" title="Optional auto-generate after rewinding ◎">
+      auto <span id="hudAutoTxt">off</span>
+    </span>
+
+    <span class="hud-btn" id="hudPromptBtn" title="Click to switch preset or edit text">
+      <span style="color:#484F58;">■</span>
+      <span class="hud-val" id="hudTokens">0</span><span class="hud-dim" id="hudUndo" style="display:none;"> ↺</span>
+    </span>
+
+    <span class="hud-btn" id="hudBoxBtn" title="Click rail lines to add/remove multi-line boxes (Shift+Click for range)">
+      box <span class="hud-val" id="hudBoxes">0</span>
+    </span>
+
+    <span class="hud-btn" id="hudSteerBtn" title="Toggle cursor radial steering dial (Space)">
+      steer <span class="hud-val" id="hudSteers">0</span>
+    </span>
+
+    <span class="hud-btn" id="hudPinBtn" title="Click words in text to pin/unpin laser tethers">
+      pin <span class="hud-val" id="hudPins">0</span>
+    </span>
+
+    <span class="hud-btn" id="hudTempBtn" title="Click to adjust Temperature, Top-K & Top-p / Pick next token">
+      T <span class="hud-val" id="hudTemp">0.80</span> · K<span id="hudK">50</span> · p<span id="hudP">.90</span>
+    </span>
+
+    <span class="hud-btn" id="hudTreeBtn" title="Expand 3×3×3 Multiverse Word Tree">
+      3×3 tree
+    </span>
+
+    <span class="hud-btn active" id="hudAudioBtn" title="Toggle mechanical detent ticks">
+      ♪ <span id="hudAudioTxt">on</span>
+    </span>
+  </footer>
+</div>
+
+<!-- BORDERLESS OVERLAY: TOP-K, TOP-P & TEMPERATURE / CUSTOM VECTOR -->
+<div class="overlay-backdrop" id="topkModal">
+  <div class="overlay-card">
+    <div class="overlay-head">
+      <span style="color:var(--gold); font-weight:700;">SAMPLING &amp; CANDIDATES AT CURSOR (t = <span id="topkCursorLbl">0</span>)</span>
+      <span style="color:var(--muted);" id="topkEntropyLbl">H(p) = -- bits</span>
+      <button class="flat-btn" data-close="topkModal">✕ Esc</button>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #141820; font-size:11.5px;">
+      <label>T = <span id="modalTempVal">0.80</span>
+        <input type="range" id="modalTempSlider" min="0.0" max="1.8" step="0.05" value="0.80" style="vertical-align:middle; accent-color:var(--coral); width:95px;" />
+      </label>
+      <label>Top-K:
+        <select id="modalTopKSelect">
+          <option value="1">1 (greedy)</option>
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="40">40</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="0">off</option>
+        </select>
+      </label>
+      <label>Top-p = <span id="modalTopPVal">0.90</span>
+        <input type="range" id="modalTopPSlider" min="0.10" max="1.00" step="0.05" value="0.90" style="vertical-align:middle; accent-color:var(--cyan); width:95px;" />
+      </label>
+      <button class="flat-btn" id="openCustomVecFromModal">+ Layer-6 Vector</button>
+    </div>
+    <div style="font-size:11px; color:var(--muted); margin-bottom:8px;">Click any surviving token below to inject it at the reticle and continue real-time generation:</div>
+    <div id="topkRowsContainer"></div>
+  </div>
+</div>
+
+<!-- BORDERLESS OVERLAY: MULTIVERSE 3x3 TREE -->
+<div class="overlay-backdrop" id="treeModal">
+  <div class="overlay-card" style="width: 980px;">
+    <div class="overlay-head">
+      <span style="color:var(--green); font-weight:700;">MULTIVERSE 3×3×3 WORD TREE FROM RETICLE (t = <span id="treeCursorLbl">0</span>)</span>
+      <div style="display:flex; gap:8px;">
+        <button class="flat-btn green" id="refreshTreeBtn">↻ Recompute</button>
+        <button class="flat-btn" data-close="treeModal">✕ Esc</button>
+      </div>
+    </div>
+    <div style="overflow:auto; background:#000; border:1px solid #151921;">
+      <svg id="treeSvg" width="930" height="510"></svg>
+    </div>
+  </div>
+</div>
+
+<!-- BORDERLESS OVERLAY: PRESETS & PROMPT EDITOR -->
+<div class="overlay-backdrop" id="promptModal">
+  <div class="overlay-card" style="width: 640px;">
+    <div class="overlay-head">
+      <span style="color:var(--fg); font-weight:700;">SOURCE TEXT &amp; MODEL (<span id="modalModelInfo">gpt2 • 124M</span>)</span>
+      <button class="flat-btn" data-close="promptModal">✕ Esc</button>
+    </div>
+    <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+      <span style="font-size:11px; color:var(--muted);">Preset:</span>
+      <select id="presetSelect" style="flex:1;"></select>
+    </div>
+    <textarea id="promptTextarea"></textarea>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:12px;">
+      <button class="flat-btn" data-close="promptModal">Cancel</button>
+      <button class="flat-btn coral" id="applyPromptBtn">Tokenize &amp; Mount at Reticle</button>
+    </div>
+  </div>
+</div>
+
+<!-- BORDERLESS OVERLAY: CUSTOM CONTRASTIVE VECTOR -->
+<div class="overlay-backdrop" id="axisModal">
+  <div class="overlay-card" style="width: 560px;">
+    <div class="overlay-head">
+      <span style="color:var(--cyan); font-weight:700;">COMPUTE CONTRASTIVE STEERING VECTOR (LAYER 6)</span>
+      <button class="flat-btn" data-close="axisModal">✕ Esc</button>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px; font-size:11.5px;">
+      <label>Axis Label: <input type="text" id="custAxisId" value="alchemy" style="width:100%; margin-top:4px;" /></label>
+      <label style="color:var(--green);">Positive Concept (+): <input type="text" id="custAxisPos" value="Luminous chemical glassware, swirling cobalt reactions, crystalline light." style="width:100%; margin-top:4px;" /></label>
+      <label style="color:var(--coral);">Negative Contrast (-): <input type="text" id="custAxisNeg" value="Plain grey stone dust with ordinary wooden benches." style="width:100%; margin-top:4px;" /></label>
+      <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+        <button class="flat-btn green" id="saveCustomAxisBtn">Synthesize &amp; Add to Protractor</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Auto-resolve backend origin so opening via file:// OR IDE preview still reaches 127.0.0.1:8765 cleanly!
+const API_BASE = (location.protocol === "http:" || location.protocol === "https:") && location.port === "8765"
+  ? ""
+  : "http://127.0.0.1:8765";
+const WS_URL = (location.protocol === "https:" ? "wss://" : "ws://") +
+  ((location.protocol === "http:" || location.protocol === "https:") && location.port === "8765"
+    ? location.host
+    : "127.0.0.1:8765") + "/ws";
+
+// =========================================================================
+// WebAudio Tactile Detent Click Synthesizer
+// =========================================================================
+class DetentAudio {
+  constructor() {
+    this.on = true;
+    this.ctx = null;
+  }
+  click(freq = 1400, dur = 0.009, vol = 0.04) {
+    if (!this.on) return;
+    try {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AC();
+      }
+      if (this.ctx.state === "suspended") this.ctx.resume();
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(240, now + dur);
+      g.gain.setValueAtTime(vol, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.connect(g);
+      g.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + dur);
+    } catch (_) {}
+  }
+}
+const sfx = new DetentAudio();
+
+// =========================================================================
+// Studio State
+// =========================================================================
+const state = {
+  pieces: [],          // [{index, id, text, echoed}]
+  undoStack: [],       // Saved snapshots for Ctrl+Z if needed
+  cursorPos: 0,        // Frontier index (equals pieces.length since future vanishes!)
+  temperature: 0.80,
+  topK: 50,
+  topP: 0.90,
+  autoStreamOnScrub: false,
+  writeQueue: 0,
+  axes: [],
+  presets: [],
+  modelInfo: "gpt2",
+
+  // Multi-line Attention Rail Boxes: [{id, rank, startLine, endLine, boost, active}]
+  railBoxes: [],
+  boxRangeAnchor: null, // Shift+Click anchor line
+
+  // Pinned Word Tethers: Map<tokenIndex, {index, text, boost}>
+  pinnedTokens: new Map(),
+
+  // Steering Vectors: Map<axisId, {axis, stop, strength, color, lineNum}>
+  activeSteers: new Map(),
+
+  // 3-Level 360° Polar Protractor & Circular Word Wheel UI
+  dialOpen: false,
+  dialLevel: 1,        // 1 = Axes Wheel, 2 = Multi-Stop Radial Strength Protractor, 3 = Circular Future-Word Predictor
+  dialAxisId: "tone",
+  dialStopIdx: 0,
+  dialWordIdx: 0,
+  dialBallPos: { x: 0, y: 78 }, // Free 360° (dx, dy) relative to ◎ pivot
+  dialDragging: false,
+  dialCrossCooldown: 0,
+  dialInspectTimer: null,
+  wordRings: [],          // [{ ringIdx, radius, cands, chosenIdx, loading }]
+  ringInspectCache: new Map(), // key -> top_k array for 0ms retract/re-cross
+  ringFetchSeq: 0,
+  dialWaitReleaseForRing: false,
+
+  // Visual Line Measurements & Telemetry
+  visualLines: [],     // [{lineNum, startTok, endTok, topPx, attnScore}]
+  lastTokenAttn: [],
+  lastTopK: [],
+  lastEntropy: 0,
+  lastLatencyMs: 0,
+  reticleXY: { x: 200, y: 200 },
+
+  isGenerating: false,
+  ws: null,
+  // 1) Scroll/Drag state + debounced inspect
+  scrollInspectTimer: null,
+  // 2) Speculative lookahead prefetch + O(1) rAF sync + exact bounded progression
+  streamId: 0,
+  scrollPixelDebt: 0,
+  rewindPixelDebt: 0,
+  scrollTokenBudget: 0,
+  dragTarget: null, // { stageX, stageY } relative to #proseText
+  prefetchBuffer: [],
+  prefetchGenId: 0,
+  prefetchInFlight: false,
+  rafLayoutPending: false,
+  lastReticleTop: null,
+};
+
+let pendingStepResolve = null;
+
+function scheduleInspect(delay = 120) {
+  if (state.scrollInspectTimer) clearTimeout(state.scrollInspectTimer);
+  state.scrollInspectTimer = setTimeout(() => {
+    inspectCursor();
+  }, delay);
+}
+
+function scheduleDialInspect(delay = 180) {
+  if (state.dialInspectTimer) clearTimeout(state.dialInspectTimer);
+  state.dialInspectTimer = setTimeout(() => {
+    invalidatePrefetch();
+    inspectCursor();
+  }, delay);
+}
+
+const FALLBACK_AXES = [
+  { id: "tension", label: "tension", color: "#EF4444", stops: [{ name: "very relaxed" }, { name: "very strained" }], default_stop: 0 },
+  { id: "resolution", label: "resolution", color: "#58A6FF", stops: [{ name: "open mystery" }, { name: "decisive" }], default_stop: 0 },
+  { id: "tone", label: "tone", color: "#58A6FF", stops: [{ name: "wry" }, { name: "tender" }, { name: "somber" }, { name: "wondrous" }], default_stop: 1 },
+  { id: "distance", label: "distance", color: "#22C55E", stops: [{ name: "outside view" }, { name: "inside mind" }], default_stop: 1 },
+  { id: "fortune", label: "fortune", color: "#F97316", stops: [{ name: "grim" }, { name: "fortunate" }], default_stop: 1 },
+  { id: "surprise", label: "surprise", color: "#EAB308", stops: [{ name: "expected" }, { name: "very unexpected" }], default_stop: 1 },
+  { id: "mode", label: "mode", color: "#EF4444", stops: [{ name: "description" }, { name: "action" }], default_stop: 1 },
+  { id: "pace", label: "pace", color: "#A855F7", stops: [{ name: "slow & lyrical" }, { name: "somewhat compressed" }], default_stop: 1 },
+];
+
+// =========================================================================
+// Boot & WebSocket
+// =========================================================================
+async function boot() {
+  try {
+    const res = await fetch(`${API_BASE}/api/status`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    document.getElementById("offlineBanner").style.display = "none";
+
+    state.axes = data.axes || FALLBACK_AXES;
+    state.presets = data.presets || [];
+    state.modelInfo = `${data.model_name} • ${(data.param_count / 1e6).toFixed(1)}M • L${data.steer_layer}`;
+    document.getElementById("modalModelInfo").textContent = state.modelInfo;
+
+    const sel = document.getElementById("presetSelect");
+    sel.innerHTML = "";
+    state.presets.forEach(p => {
+      const o = document.createElement("option");
+      o.value = p.id;
+      o.textContent = p.title;
+      sel.appendChild(o);
+    });
+
+    connectWS();
+    await mountText(state.presets[0].text, true);
+  } catch (err) {
+    console.warn("Using preview fallback (open http://127.0.0.1:8765 for live model):", err);
+    document.getElementById("offlineBanner").style.display = "block";
+    state.axes = FALLBACK_AXES;
+    const fallbackText =
+      "It was a dark and stormy night when the wind howled through the cracked windows " +
+      "of the old lighthouse, rattling the ancient glass panes like a frantic chorus " +
+      "of ghostly violins. Inside, a lone figure hunched over a weathered desk, the " +
+      "candlelight flickering against the maps strewn across it. Captain Elias Marlowe " +
+      "traced his finger along the jagged coastline, his mind racing with memories of " +
+      "shipwrecks and whispered legends that haunted these of the cliffs for generations. " +
+      "He paused, his thumb resting on a faded ink blot that marked a spot where no " +
+      "chart had ever shown a harbor—only a swirling vortex drawn in erratic strokes. " +
+      "A sudden crack of thunder rattled the lighthouse's stone and sent a shiver down " +
+      "the captain's spine. He leaned closer, the candle sputtering as the wind threatened to snuff it";
+    state.pieces = fallbackText.split(/(\s+)/).filter(Boolean).map((w, i) => ({ index: i, id: i, text: w, echoed: false }));
+    state.cursorPos = state.pieces.length;
+    state.lastTokenAttn = state.pieces.map((_, i) => 0.005 + 0.012 * Math.abs(Math.sin(i * 0.45)));
+    renderTextOnly();
+    await new Promise(r => requestAnimationFrame(r));
+    measureVisualLines();
+    applyDefaultDemoAnnotations();
+    renderAll();
+  }
+}
+
+function invalidatePrefetch() {
+  state.prefetchGenId++;
+  state.prefetchBuffer = [];
+  state.prefetchInFlight = false;
+  if (state.ringInspectCache) state.ringInspectCache.clear();
+  state.wordRings = [];
+  clearWheelGhostPreview();
+  if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify({ action: "cancel_prefetch" }));
+  }
+}
+
+function requestPrefetch(count = 60) {
+  if (
+    state.isGenerating ||
+    state.prefetchInFlight ||
+    !state.ws ||
+    state.ws.readyState !== WebSocket.OPEN ||
+    state.cursorPos === 0 ||
+    state.prefetchBuffer.length >= 48
+  ) {
+    return;
+  }
+  state.prefetchInFlight = true;
+  state.prefetchGenId++;
+  const activeIds = state.pieces.slice(0, state.cursorPos).map(p => p.id);
+  const fullIds = activeIds.concat(state.prefetchBuffer.map(b => b.id));
+  state.ws.send(JSON.stringify({
+    action: "prefetch",
+    gen_id: state.prefetchGenId,
+    token_ids: fullIds,
+    count: count,
+    temperature: state.temperature,
+    top_k: state.topK,
+    top_p: state.topP,
+    attn_biases: buildAttnBiasMap(),
+    steering: buildSteerPayload(),
+  }));
+}
+
+function connectWS() {
+  try {
+    const ws = new WebSocket(WS_URL);
+    ws.onopen = () => {
+      if (!state.isGenerating && state.cursorPos > 0) requestPrefetch(60);
+    };
+    ws.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === "prefetch_token") {
+        if (msg.gen_id === state.prefetchGenId) {
+          state.prefetchBuffer.push({
+            id: msg.token_id,
+            text: msg.token_str,
+            tok_per_sec: msg.tok_per_sec,
+          });
+        }
+      } else if (msg.type === "prefetch_done") {
+        if (msg.gen_id === state.prefetchGenId) {
+          state.prefetchInFlight = false;
+          if (!state.isGenerating && state.prefetchBuffer.length < 30 && state.cursorPos > 0) {
+            requestPrefetch(48);
+          }
+        }
+      } else if (msg.type === "token") {
+        if (!state.isGenerating || (msg.stream_id != null && msg.stream_id !== state.streamId)) return;
+        appendTokenFast(msg.token_id, msg.token_str, msg.tok_per_sec);
+        if (state.dragTarget && !isReticleBehindDragTarget()) {
+          stopGen();
+          scheduleInspect(160);
+        }
+      } else if (msg.type === "done" || msg.type === "error") {
+        if (msg.stream_id != null && msg.stream_id !== state.streamId) return;
+        state.isGenerating = false;
+        state.prefetchInFlight = false;
+        updateGenHud();
+        if (pendingStepResolve) {
+          const r = pendingStepResolve;
+          pendingStepResolve = null;
+          r();
+        } else if (state.scrollTokenBudget > 0) {
+          const nextReq = state.scrollTokenBudget;
+          state.scrollTokenBudget = 0;
+          startGen(nextReq);
+        } else if (state.dragTarget && isReticleBehindDragTarget()) {
+          // Active drag rAF loop will request the next bounded slice if still behind target
+        } else if (state.writeQueue > 0) {
+          pumpWriteQueue();
+        } else {
+          inspectCursor();
+        }
+      }
+    };
+    ws.onclose = () => {
+      state.prefetchInFlight = false;
+      setTimeout(connectWS, 1500);
+    };
+    state.ws = ws;
+  } catch (_) {}
+}
+
+async function mountText(text, applyDemo = false) {
+  stopGen();
+  invalidatePrefetch();
+  state.scrollTokenBudget = 0;
+  state.scrollPixelDebt = 0;
+  state.rewindPixelDebt = 0;
+  state.dragTarget = null;
+  const res = await fetch(`${API_BASE}/api/tokenize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  const data = await res.json();
+  state.pieces = data.pieces.map((p, i) => ({ ...p, index: i, echoed: false }));
+  state.cursorPos = state.pieces.length;
+  state.railBoxes = [];
+  state.pinnedTokens.clear();
+  state.activeSteers.clear();
+
+  renderTextOnly();
+  await new Promise(r => requestAnimationFrame(r));
+  measureVisualLines();
+
+  if (applyDemo) applyDefaultDemoAnnotations();
+  renderAll();
+  await inspectCursor();
+}
+
+function applyDefaultDemoAnnotations() {
+  // Automatically pin iconic narrative tokens on first load (matches Image 1 aesthetics!)
+  const targets = ["figure", "jagged", "resting", "crack"];
+  targets.forEach(word => {
+    const hit = state.pieces.find(p => p.text.trim().toLowerCase() === word);
+    if (hit) {
+      state.pinnedTokens.set(hit.index, { index: hit.index, text: hit.text.trim(), boost: 3.0 });
+    }
+  });
+  // Add 2 multi-line attention boxes in Left Rail
+  if (state.visualLines.length >= 9) {
+    state.railBoxes = [
+      { id: 1, rank: 2, startLine: 4, endLine: 5, boost: 2.8, weight: 0.38, active: false },
+      { id: 2, rank: 1, startLine: 7, endLine: 9, boost: 3.4, weight: 0.54, active: true },
+    ];
+  }
+  // Add 1 subtle active right-margin realization pill anchored cleanly near frontier line
+  const modeAx = state.axes.find(a => a.id === "mode");
+  if (modeAx) {
+    const ln = Math.max(1, state.visualLines.length - 1);
+    state.activeSteers.set("mode", {
+      axis: "mode",
+      stop: "action",
+      strength: 0.90,
+      color: "#EF4444",
+      lineNum: ln,
+    });
+  }
+}
+
+// =========================================================================
+// Backend Hooks: Attention Bias Map + Layer-6 Steering Vector Payload
+// =========================================================================
+function buildAttnBiasMap() {
+  const biases = {};
+  state.railBoxes.forEach(box => {
+    state.visualLines.forEach(vl => {
+      if (vl.lineNum >= box.startLine && vl.lineNum <= box.endLine) {
+        for (let t = vl.startTok; t <= vl.endTok; t++) {
+          if (t < state.cursorPos) biases[t] = (biases[t] || 0) + box.boost;
+        }
+      }
+    });
+  });
+  state.pinnedTokens.forEach((pin, idx) => {
+    if (idx < state.cursorPos) biases[idx] = (biases[idx] || 0) + pin.boost;
+  });
+  return biases;
+}
+
+function buildSteerPayload() {
+  return Array.from(state.activeSteers.values()).map(s => ({
+    axis: s.axis,
+    stop: s.stop,
+    strength: s.strength,
+  }));
+}
+
+async function inspectCursor() {
+  if (state.cursorPos === 0) return;
+  const t0 = performance.now();
+  try {
+    const res = await fetch(`${API_BASE}/api/inspect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token_ids: state.pieces.slice(0, state.cursorPos).map(p => p.id),
+        temperature: state.temperature,
+        top_k: state.topK || 10,
+        top_p: state.topP,
+        attn_biases: buildAttnBiasMap(),
+        steering: buildSteerPayload(),
+      }),
+    });
+    const data = await res.json();
+    state.lastTopK = data.top_k || [];
+    state.lastEntropy = data.entropy || 0;
+    state.lastTokenAttn = data.token_attention || [];
+    state.lastLatencyMs = Math.round(performance.now() - t0);
+    if (
+      state.dialOpen &&
+      state.dialLevel === 3 &&
+      (!state.wordRings.length || (state.wordRings.length === 1 && state.wordRings[0].chosenIdx === null))
+    ) {
+      resetWordRingsFromTopK();
+    }
+    if (state.dialDragging) {
+      renderLedRail();
+      renderRightMarginTags();
+      renderLaserRaysAndTraces();
+      if (state.dialOpen) renderDialOverlay();
+      updateMicroHud();
+    } else {
+      renderAll();
+    }
+    if (!state.isGenerating && !state.dialDragging) requestPrefetch(60);
+  } catch (_) {}
+}
+
+function startGen(maxTokens = 40, forcedId = null) {
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN || state.cursorPos === 0) return;
+  invalidatePrefetch();
+  state.streamId++;
+  state.isGenerating = true;
+  updateGenHud();
+  state.ws.send(JSON.stringify({
+    action: forcedId !== null && maxTokens === 1 ? "step" : "generate",
+    stream_id: state.streamId,
+    token_ids: state.pieces.slice(0, state.cursorPos).map(p => p.id),
+    max_tokens: maxTokens,
+    temperature: state.temperature,
+    top_k: state.topK,
+    top_p: state.topP,
+    attn_biases: buildAttnBiasMap(),
+    steering: buildSteerPayload(),
+    forced_token_id: forcedId,
+  }));
+}
+
+function stopGen() {
+  state.streamId++;
+  if (state.isGenerating && state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify({ action: "stop" }));
+  }
+  state.isGenerating = false;
+  updateGenHud();
+}
+
+function updateGenHud() {
+  const icon = document.getElementById("hudGenIcon");
+  const txt = document.getElementById("hudGenTxt");
+  if (state.isGenerating) {
+    icon.textContent = "■";
+    icon.style.color = "var(--coral)";
+    txt.textContent = "stop";
+  } else {
+    icon.textContent = "▼";
+    icon.style.color = "var(--coral)";
+    txt.textContent = "generate";
+  }
+}
+
+// =========================================================================
+// Core 5-Column Rendering
+// =========================================================================
+function renderAll() {
+  renderTextOnly();
+  requestAnimationFrame(() => {
+    measureVisualLines();
+    // Prune rail boxes whose lines vanished during rewind
+    const maxLn = state.visualLines.length;
+    state.railBoxes = state.railBoxes.filter(b => b.startLine <= maxLn).map(b => ({
+      ...b,
+      endLine: Math.min(b.endLine, maxLn),
+    }));
+    renderRuler();
+    renderLedRail();
+    renderSpanBrackets();
+    renderRightMarginTags();
+    renderLaserRaysAndTraces();
+    if (state.dialOpen) {
+      document.getElementById("inlineCandStrip").style.display = "none";
+      renderDialOverlay();
+    } else {
+      document.getElementById("inlineCandStrip").style.display = "none";
+    }
+    if (state.isGenerating) {
+      const rEl = document.getElementById("inlineReticle");
+      if (rEl) rEl.scrollIntoView({ block: "nearest" });
+    }
+    updateMicroHud();
+  });
+}
+
+function renderInlineCandStrip() {
+  // Kept hidden cleanly when wheel is closed; predictions live inside the open Wheel!
+  document.getElementById("inlineCandStrip").style.display = "none";
+}
+
+function createTokenSpan(p, idx) {
+  const sp = document.createElement("span");
+  sp.className = "tok";
+  sp.dataset.idx = idx;
+  sp.textContent = p.text;
+  if (idx >= state.cursorPos) sp.classList.add("future");
+  if (state.pinnedTokens.has(idx)) sp.classList.add("pinned");
+  if (p.echoed) sp.classList.add("echoed");
+
+  sp.onclick = (e) => {
+    e.stopPropagation();
+    if (e.shiftKey) {
+      scrubTo(idx + 1);
+    } else if (idx < state.cursorPos) {
+      sfx.click(1600, 0.012, 0.05);
+      invalidatePrefetch();
+      if (state.pinnedTokens.has(idx)) {
+        state.pinnedTokens.delete(idx);
+      } else {
+        state.pinnedTokens.set(idx, { index: idx, text: p.text.trim() || p.text, boost: 3.0 });
+      }
+      renderAll();
+      inspectCursor();
+    } else {
+      scrubTo(idx + 1);
+    }
+  };
+  sp.ondblclick = (e) => {
+    e.stopPropagation();
+    scrubTo(idx + 1);
+  };
+  return sp;
+}
+
+function renderTextOnly() {
+  const box = document.getElementById("proseText");
+  box.innerHTML = "";
+  state.pieces.forEach((p, idx) => {
+    if (idx === state.cursorPos) {
+      box.appendChild(createInlineReticle());
+    }
+    box.appendChild(createTokenSpan(p, idx));
+  });
+  if (state.cursorPos >= state.pieces.length) {
+    box.appendChild(createInlineReticle());
+  }
+}
+
+function scheduleRailSync() {
+  if (state.rafLayoutPending) return;
+  state.rafLayoutPending = true;
+  requestAnimationFrame(() => {
+    state.rafLayoutPending = false;
+    const retEl = document.getElementById("inlineReticle");
+    const retTop = retEl ? retEl.getBoundingClientRect().top : null;
+    const lineWrapped = retTop !== null && (state.lastReticleTop === null || Math.abs(retTop - state.lastReticleTop) > 4);
+    state.lastReticleTop = retTop;
+
+    measureVisualLines();
+    if (lineWrapped || state.dialOpen) {
+      const maxLn = state.visualLines.length;
+      state.railBoxes = state.railBoxes.filter(b => b.startLine <= maxLn).map(b => ({
+        ...b,
+        endLine: Math.min(b.endLine, maxLn),
+      }));
+      renderRuler();
+      renderLedRail();
+      renderSpanBrackets();
+      renderRightMarginTags();
+    }
+    renderLaserRaysAndTraces();
+    if (state.dialOpen) renderDialOverlay();
+    if (retEl) retEl.scrollIntoView({ block: "nearest" });
+    updateMicroHud();
+  });
+}
+
+function appendTokenFast(tid, tstr, tokPerSec) {
+  if (state.cursorPos < state.pieces.length) {
+    state.pieces = state.pieces.slice(0, state.cursorPos);
+  }
+  const pinnedWords = Array.from(state.pinnedTokens.values())
+    .map(p => p.text.trim().toLowerCase())
+    .filter(w => w.length > 2);
+  const cleanTok = String(tstr).trim().toLowerCase();
+  const isEcho = pinnedWords.some(pw => cleanTok === pw || (pw.length > 3 && cleanTok.includes(pw)));
+
+  const piece = {
+    index: state.pieces.length,
+    id: tid,
+    text: tstr,
+    echoed: isEcho,
+  };
+  state.pieces.push(piece);
+  state.cursorPos = state.pieces.length;
+
+  const box = document.getElementById("proseText");
+  const retEl = document.getElementById("inlineReticle");
+  const sp = createTokenSpan(piece, piece.index);
+  if (retEl && retEl.parentNode === box) {
+    box.insertBefore(sp, retEl);
+  } else {
+    box.appendChild(sp);
+  }
+
+  state.lastLatencyMs = Math.round(1000 / Math.max(0.1, tokPerSec || 40.0));
+  sfx.click(1550, 0.006, 0.022);
+  document.getElementById("hudLatency").textContent = `${state.lastLatencyMs}ms/t`;
+  document.getElementById("hudTokens").textContent = state.cursorPos;
+  scheduleRailSync();
+}
+
+function popPrefetchTokens(count) {
+  let popped = 0;
+  while (popped < count && state.prefetchBuffer.length > 0) {
+    const tok = state.prefetchBuffer.shift();
+    appendTokenFast(tok.id, tok.text, tok.tok_per_sec || 120.0);
+    popped++;
+  }
+  if (state.prefetchBuffer.length < 18 && !state.isGenerating) {
+    requestPrefetch(48);
+  }
+  return popped;
+}
+
+function findTokenIndexAtPoint(clientX, clientY) {
+  const spans = document.querySelectorAll("#proseText .tok");
+  let bestIdx = null;
+  let bestDist = Infinity;
+  spans.forEach(sp => {
+    const idx = parseInt(sp.dataset.idx, 10);
+    const rects = sp.getClientRects();
+    for (const r of rects) {
+      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
+        bestIdx = idx;
+        bestDist = 0;
+        return;
+      }
+      const cy = (r.top + r.bottom) / 2;
+      const cx = (r.left + r.right) / 2;
+      const d = Math.abs(cy - clientY) * 80 + Math.abs(cx - clientX);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = idx;
+      }
+    }
+  });
+  return bestIdx;
+}
+
+function pumpWriteQueue() {
+  if (state.isGenerating || state.writeQueue <= 0) return;
+  state.writeQueue--;
+  startGen(1);
+}
+
+function enqueueScrollWrite(count = 1) {
+  state.writeQueue = Math.min(6, state.writeQueue + count);
+  pumpWriteQueue();
+}
+
+function handleReticleOrWheelScroll(e) {
+  if (document.querySelector(".overlay-backdrop.open")) return;
+  if (e.shiftKey) return; // Hold Shift if you want native browser scroll
+  const dy = e.deltaMode === 1 ? e.deltaY * 24 : e.deltaY;
+  if (Math.abs(dy) < 1) return;
+
+  const scroller = document.getElementById("stageScroll");
+  const retEl = document.getElementById("inlineReticle");
+  const retRect = retEl ? retEl.getBoundingClientRect() : null;
+  const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 24;
+  const belowCursor = retRect ? e.clientY >= retRect.top - 12 : true;
+
+  if (dy < 0) {
+    // Scroll UP -> stop streaming, invalidate prefetch, erase past tokens proportionally!
+    e.preventDefault();
+    e.stopPropagation();
+    state.scrollTokenBudget = 0;
+    state.scrollPixelDebt = 0;
+    state.writeQueue = 0;
+    state.dragTarget = null;
+    if (state.isGenerating) stopGen();
+    invalidatePrefetch();
+    state.rewindPixelDebt += Math.abs(dy);
+    const PX_PER_REWIND = 18;
+    const step = Math.floor(state.rewindPixelDebt / PX_PER_REWIND);
+    if (step > 0) {
+      state.rewindPixelDebt -= step * PX_PER_REWIND;
+      scrubTo(state.cursorPos - Math.min(8, step), false);
+      scheduleInspect(120);
+    }
+  } else if (belowCursor || atBottom || state.dialOpen) {
+    // Scroll DOWN below cursor/wheel -> generate strictly proportional to exact scroll delta!
+    e.preventDefault();
+    e.stopPropagation();
+    state.rewindPixelDebt = 0;
+    state.scrollPixelDebt += dy;
+    const PX_PER_TOKEN = 16;
+    const addTokens = Math.floor(state.scrollPixelDebt / PX_PER_TOKEN);
+    if (addTokens > 0) {
+      state.scrollPixelDebt -= addTokens * PX_PER_TOKEN;
+      state.scrollTokenBudget = Math.min(120, state.scrollTokenBudget + addTokens);
+    }
+    if (state.scrollTokenBudget > 0 && !state.isGenerating) {
+      const popped = popPrefetchTokens(state.scrollTokenBudget);
+      state.scrollTokenBudget -= popped;
+      if (popped > 0) scheduleInspect(150);
+    }
+    if (state.scrollTokenBudget > 0 && !state.isGenerating) {
+      const toReq = state.scrollTokenBudget;
+      state.scrollTokenBudget = 0;
+      startGen(toReq);
+    }
+  }
+}
+
+function isReticleBehindDragTarget() {
+  if (!state.dragTarget) return false;
+  const proseEl = document.getElementById("proseText");
+  const retEl = document.getElementById("inlineReticle");
+  if (!proseEl || !retEl) return false;
+  const pRect = proseEl.getBoundingClientRect();
+  const rRect = retEl.getBoundingClientRect();
+  const retX = (rRect.left + rRect.right) / 2 - pRect.left;
+  const retY = (rRect.top + rRect.bottom) / 2 - pRect.top;
+  const lh = Math.max(20, rRect.height || 26);
+  return (
+    retY < state.dragTarget.stageY - lh * 0.45 ||
+    (Math.abs(retY - state.dragTarget.stageY) <= lh * 0.45 && retX < state.dragTarget.stageX - 10)
+  );
+}
+
+function createInlineReticle() {
+  const wrap = document.createElement("span");
+  wrap.className = "inline-reticle";
+  wrap.id = "inlineReticle";
+  wrap.title = "Drag ▲ UP to rewind | Drag/Scroll ▼ DOWN to write text | Click to open Wheel";
+  wrap.innerHTML = `
+    <svg width="16" height="16" viewBox="-8 -8 16 16">
+      <line x1="-7" y1="0" x2="7" y2="0" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
+      <line x1="0" y1="-7" x2="0" y2="7" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>
+      <circle cx="0" cy="0" r="5" fill="#000" stroke="#E8EAED" stroke-width="1"/>
+      <circle cx="0" cy="0" r="2.2" fill="#EF4444"/>
+    </svg>
+  `;
+
+  wrap.addEventListener("wheel", handleReticleOrWheelScroll, { passive: false });
+
+  let startX = 0;
+  let startY = 0;
+  let curY = 0;
+  let moved = false;
+  let pushedUndo = false;
+  let dragActive = false;
+  let dragBelow = false;
+  let lastDripTime = 0;
+  let dragRafId = null;
+
+  const dragWriteLoop = (now) => {
+    if (!dragActive || !dragBelow || !state.dragTarget || !isReticleBehindDragTarget()) {
+      dragBelow = false;
+      if (state.isGenerating) stopGen();
+      scheduleInspect(150);
+      return;
+    }
+    const proseEl = document.getElementById("proseText");
+    const retEl = document.getElementById("inlineReticle");
+    const pRect = proseEl ? proseEl.getBoundingClientRect() : null;
+    const rRect = retEl ? retEl.getBoundingClientRect() : null;
+    const retY = (pRect && rRect) ? ((rRect.top + rRect.bottom) / 2 - pRect.top) : 0;
+    const dy = Math.max(0, state.dragTarget.stageY - retY);
+
+    const interval = dy > 80 ? 16 : (dy > 30 ? 22 : 34);
+    const maxPop = dy > 80 ? 3 : (dy > 30 ? 2 : 1);
+
+    if (now - lastDripTime >= interval) {
+      lastDripTime = now;
+      let poppedAny = false;
+      for (let k = 0; k < maxPop && isReticleBehindDragTarget() && state.prefetchBuffer.length > 0; k++) {
+        popPrefetchTokens(1);
+        poppedAny = true;
+      }
+      if (!isReticleBehindDragTarget()) {
+        dragBelow = false;
+        if (state.isGenerating) stopGen();
+        scheduleInspect(150);
+        return;
+      }
+      if (!poppedAny && !state.isGenerating) {
+        const estTokens = Math.max(1, Math.min(10, Math.ceil(Math.max(1, dy) / 24) * 6));
+        startGen(estTokens);
+      }
+    }
+    dragRafId = requestAnimationFrame(dragWriteLoop);
+  };
+
+  wrap.onmousedown = (e) => {
+    e.stopPropagation();
+    startX = e.clientX;
+    startY = e.clientY;
+    curY = e.clientY;
+    moved = false;
+    pushedUndo = false;
+    dragActive = true;
+    dragBelow = false;
+
+    const onMove = (me) => {
+      curY = me.clientY;
+      const distMoved = Math.hypot(me.clientX - startX, me.clientY - startY);
+      if (distMoved > 5) moved = true;
+      if (!moved) return;
+      if (!pushedUndo) {
+        saveUndoSnapshot();
+        pushedUndo = true;
+      }
+
+      const proseEl = document.getElementById("proseText");
+      const retEl = document.getElementById("inlineReticle");
+      if (!proseEl || !retEl) return;
+      const pRect = proseEl.getBoundingClientRect();
+      const rRect = retEl.getBoundingClientRect();
+      const stageX = me.clientX - pRect.left;
+      const stageY = me.clientY - pRect.top;
+      const retX = (rRect.left + rRect.right) / 2 - pRect.left;
+      const retY = (rRect.top + rRect.bottom) / 2 - pRect.top;
+      const lh = Math.max(20, rRect.height || 26);
+
+      if (stageY > retY + lh * 0.45 || (Math.abs(stageY - retY) <= lh * 0.45 && stageX > retX + 10)) {
+        state.scrollTokenBudget = 0;
+        state.scrollPixelDebt = 0;
+        state.dragTarget = { stageX, stageY };
+        if (!dragBelow) {
+          dragBelow = true;
+          lastDripTime = 0;
+          dragRafId = requestAnimationFrame(dragWriteLoop);
+        }
+        return;
+      }
+
+      if (stageY < retY - lh * 0.45 || (Math.abs(stageY - retY) <= lh * 0.45 && stageX < retX - 10)) {
+        state.dragTarget = null;
+        dragBelow = false;
+        if (dragRafId) cancelAnimationFrame(dragRafId);
+        if (state.isGenerating) stopGen();
+        state.writeQueue = 0;
+        state.scrollTokenBudget = 0;
+        const hitIdx = findTokenIndexAtPoint(me.clientX, me.clientY);
+        if (hitIdx !== null) {
+          const target = Math.max(1, Math.min(state.pieces.length, hitIdx + 1));
+          if (target < state.cursorPos) {
+            invalidatePrefetch();
+            scrubTo(target, false, false);
+          }
+        }
+        return;
+      }
+
+      state.dragTarget = null;
+      dragBelow = false;
+      if (dragRafId) cancelAnimationFrame(dragRafId);
+      if (state.isGenerating) stopGen();
+    };
+
+    const onUp = (ue) => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      state.dragTarget = null;
+      state.scrollTokenBudget = 0;
+      state.scrollPixelDebt = 0;
+      dragActive = false;
+      dragBelow = false;
+      if (dragRafId) cancelAnimationFrame(dragRafId);
+      state.writeQueue = 0;
+      if (!moved) {
+        // Pure click opens/closes 3-Level 360° Polar Protractor Wheel!
+        sfx.click(1450, 0.015, 0.05);
+        state.dialOpen = !state.dialOpen;
+        document.getElementById("dialAnchor").style.display = state.dialOpen ? "block" : "none";
+        if (state.dialOpen) {
+          document.getElementById("inlineCandStrip").style.display = "none";
+          syncDialBallToCurrentState();
+          renderDialOverlay();
+        } else {
+          renderInlineCandStrip();
+        }
+      } else {
+        if (state.isGenerating) stopGen();
+        inspectCursor();
+      }
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  return wrap;
+}
+
+function saveUndoSnapshot() {
+  state.undoStack.push({
+    pieces: state.pieces.map(p => ({ ...p })),
+    pinned: Array.from(state.pinnedTokens.entries()),
+    boxes: state.railBoxes.map(b => ({ ...b })),
+  });
+  if (state.undoStack.length > 25) state.undoStack.shift();
+}
+
+function restoreUndoSnapshot() {
+  if (state.undoStack.length === 0) return;
+  stopGen();
+  invalidatePrefetch();
+  state.scrollTokenBudget = 0;
+  state.scrollPixelDebt = 0;
+  state.rewindPixelDebt = 0;
+  state.dragTarget = null;
+  const snap = state.undoStack.pop();
+  state.pieces = snap.pieces;
+  state.cursorPos = state.pieces.length;
+  state.pinnedTokens = new Map(snap.pinned);
+  state.railBoxes = snap.boxes;
+  sfx.click(1200, 0.014, 0.05);
+  renderAll();
+  inspectCursor();
+}
+
+function scrubTo(targetPos, refreshInspect = true, pushUndo = true) {
+  stopGen();
+  invalidatePrefetch();
+  const clamped = Math.max(1, Math.min(state.pieces.length, targetPos));
+  if (clamped !== state.cursorPos) {
+    if (pushUndo && clamped < state.pieces.length) saveUndoSnapshot();
+    sfx.click(950 + clamped * 2, 0.008, 0.03);
+    // Future tokens strictly vanish!
+    state.pieces = state.pieces.slice(0, clamped);
+    state.cursorPos = clamped;
+    // Prune pinned tethers referencing vanished future tokens
+    for (const key of Array.from(state.pinnedTokens.keys())) {
+      if (key >= clamped) state.pinnedTokens.delete(key);
+    }
+    renderAll();
+    if (refreshInspect) inspectCursor();
+  }
+}
+
+// Measure wrapped visual lines exactly in pixels relative to #instrumentGrid
+function measureVisualLines() {
+  const gridRect = document.getElementById("instrumentGrid").getBoundingClientRect();
+  const spans = document.querySelectorAll("#proseText .tok");
+  const lines = [];
+  let curTop = null;
+  let curLine = null;
+
+  spans.forEach(sp => {
+    const idx = parseInt(sp.dataset.idx, 10);
+    const rect = sp.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+    const relTop = Math.round(rect.top - gridRect.top);
+
+    if (curTop === null || Math.abs(relTop - curTop) > 10) {
+      curTop = relTop;
+      curLine = {
+        lineNum: lines.length + 1,
+        startTok: idx,
+        endTok: idx,
+        topPx: relTop,
+        attnScore: 0,
+        isFuture: idx >= state.cursorPos,
+      };
+      lines.push(curLine);
+    } else {
+      curLine.endTok = idx;
+      if (idx < state.cursorPos) curLine.isFuture = false;
+    }
+  });
+
+  // Compute model attention sum per line
+  lines.forEach(vl => {
+    let sum = 0;
+    for (let t = vl.startTok; t <= vl.endTok; t++) {
+      if (t < state.lastTokenAttn.length) sum += state.lastTokenAttn[t];
+    }
+    vl.attnScore = sum;
+  });
+
+  // Measure inline reticle exact center relative to #instrumentGrid
+  const ret = document.getElementById("inlineReticle");
+  if (ret) {
+    const r = ret.getBoundingClientRect();
+    state.reticleXY = {
+      x: r.left + r.width / 2 - gridRect.left,
+      y: r.top + r.height / 2 - gridRect.top,
+    };
+  }
+
+  state.visualLines = lines;
+}
+
+// Col 1: Line Numbers strictly every 5 lines (1, 5, 10, 15...)
+function renderRuler() {
+  const col = document.getElementById("colRuler");
+  col.innerHTML = "";
+  state.visualLines.forEach(vl => {
+    if (vl.lineNum === 1 || vl.lineNum % 5 === 0) {
+      const div = document.createElement("div");
+      div.className = "ruler-num";
+      div.style.top = `${vl.topPx}px`;
+      div.textContent = vl.lineNum;
+      col.appendChild(div);
+    }
+  });
+}
+
+// Col 3: 10-Segment Dense LED Matrix Rail
+function renderLedRail() {
+  const col = document.getElementById("colLeds");
+  col.innerHTML = "";
+  const maxAttn = Math.max(0.16, ...state.visualLines.map(l => l.attnScore));
+
+  state.visualLines.forEach(vl => {
+    const row = document.createElement("div");
+    row.className = "led-row";
+    row.style.top = `${vl.topPx}px`;
+    row.title = `Line ${vl.lineNum} | Click to toggle box | Shift+Click for multi-line span`;
+
+    const boxMatch = state.railBoxes.find(b => vl.lineNum >= b.startLine && vl.lineNum <= b.endLine);
+    const rawNorm = vl.isFuture ? 0 : Math.min(1.0, vl.attnScore / maxAttn);
+    const norm = Math.sqrt(rawNorm); // Compress BOS sink spike so multi-line LEDs glow richly
+    const litCount = boxMatch ? Math.max(5, Math.round(6 + boxMatch.weight * 4)) : Math.max(0, Math.round(norm * 10));
+
+    for (let c = 0; c < 10; c++) {
+      const cell = document.createElement("div");
+      cell.className = "led-cell";
+      // Right-aligned LED fill matching Images 1-3!
+      const idxFromRight = 9 - c;
+      if (idxFromRight < litCount) {
+        if (boxMatch) {
+          cell.style.background = idxFromRight < 3 ? "#EF4444" : (boxMatch.active ? "#D0D7DE" : "#6E7681");
+        } else {
+          cell.style.background = norm > 0.55 ? "#9CA3AF" : "#3E444E";
+        }
+      }
+      row.appendChild(cell);
+    }
+
+    if (vl.lineNum === 1 || vl.lineNum % 5 === 0) {
+      const tk = document.createElement("div");
+      tk.className = "led-tick";
+      row.appendChild(tk);
+    }
+
+    row.onclick = (e) => onRailLineClick(vl.lineNum, e.shiftKey);
+    col.appendChild(row);
+  });
+}
+
+function onRailLineClick(lineNum, isShift) {
+  invalidatePrefetch();
+  sfx.click(1200, 0.012, 0.05);
+  const existing = state.railBoxes.find(b => lineNum >= b.startLine && lineNum <= b.endLine);
+  if (existing && !isShift) {
+    state.railBoxes = state.railBoxes.filter(b => b.id !== existing.id);
+    state.boxRangeAnchor = null;
+  } else if (isShift && state.boxRangeAnchor !== null) {
+    const s = Math.min(state.boxRangeAnchor, lineNum);
+    const e = Math.max(state.boxRangeAnchor, lineNum);
+    state.railBoxes.forEach(b => (b.active = false));
+    state.railBoxes.push({
+      id: Date.now(),
+      rank: state.railBoxes.length + 1,
+      startLine: s,
+      endLine: e,
+      boost: 3.0,
+      weight: +(0.25 + Math.random() * 0.30).toFixed(2),
+      active: true,
+    });
+    state.boxRangeAnchor = null;
+  } else {
+    state.boxRangeAnchor = lineNum;
+    state.railBoxes.forEach(b => (b.active = false));
+    state.railBoxes.push({
+      id: Date.now(),
+      rank: state.railBoxes.length + 1,
+      startLine: lineNum,
+      endLine: lineNum,
+      boost: 3.0,
+      weight: 0.35,
+      active: true,
+    });
+  }
+  renderAll();
+  inspectCursor();
+}
+
+// Col 2: Vertical Span Brackets ([ 4 .29, [ 1 .54)
+function renderSpanBrackets() {
+  const svg = document.getElementById("bracketSvg");
+  svg.innerHTML = "";
+
+  // Sort boxes chronologically and assign crisp ranks by weight
+  const sorted = [...state.railBoxes].sort((a, b) => b.weight - a.weight);
+  sorted.forEach((b, i) => (b.rank = i + 1));
+
+  state.railBoxes.forEach(box => {
+    const firstVl = state.visualLines.find(v => v.lineNum === box.startLine);
+    const lastVl = state.visualLines.find(v => v.lineNum === box.endLine);
+    if (!firstVl || !lastVl) return;
+
+    const y1 = firstVl.topPx + 4;
+    const y2 = lastVl.topPx + 18;
+    const midY = (y1 + y2) / 2;
+    const bx = 54;
+
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", "bracket-group");
+
+    // Left vertical bracket └ │ ┌
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", `M ${bx + 7} ${y1} L ${bx} ${y1} L ${bx} ${y2} L ${bx + 7} ${y2}`);
+    p.setAttribute("fill", "none");
+    p.setAttribute("stroke", box.active ? "#E8EAED" : "#484F58");
+    p.setAttribute("stroke-width", box.active ? "1.6" : "0.9");
+    g.appendChild(p);
+
+    // Subtle right bright bar if active (matches Image 1 lines 22-26!)
+    if (box.active) {
+      const bar = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      bar.setAttribute("x1", "66");
+      bar.setAttribute("y1", y1 - 2);
+      bar.setAttribute("x2", "66");
+      bar.setAttribute("y2", y2 + 2);
+      bar.setAttribute("stroke", "#F0F6FC");
+      bar.setAttribute("stroke-width", "1.8");
+      g.appendChild(bar);
+    }
+
+    // Horizontal tick + rank + .XX coral score
+    const tk = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    tk.setAttribute("x1", bx - 5);
+    tk.setAttribute("y1", midY);
+    tk.setAttribute("x2", bx);
+    tk.setAttribute("y2", midY);
+    tk.setAttribute("stroke", "#6E7681");
+    tk.setAttribute("stroke-width", "0.9");
+    g.appendChild(tk);
+
+    const lbl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    lbl.setAttribute("x", bx - 8);
+    lbl.setAttribute("y", midY + 3.5);
+    lbl.setAttribute("text-anchor", "end");
+    lbl.setAttribute("font-size", "10");
+
+    const tsRank = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    tsRank.setAttribute("fill", "#8B949E");
+    tsRank.textContent = `${box.rank} `;
+    lbl.appendChild(tsRank);
+
+    const tsW = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    tsW.setAttribute("fill", "#E05246");
+    tsW.textContent = `.${String(Math.round(box.weight * 100)).padStart(2, "0")}`;
+    lbl.appendChild(tsW);
+
+    g.appendChild(lbl);
+    g.onclick = () => {
+      invalidatePrefetch();
+      sfx.click(1250, 0.012, 0.04);
+      state.railBoxes = state.railBoxes.filter(x => x.id !== box.id);
+      renderAll();
+      inspectCursor();
+    };
+    svg.appendChild(g);
+  });
+}
+
+// Col 5: Floating Right-Margin Half-Moon Pie Tags (◐ mode: action 90%)
+function renderRightMarginTags() {
+  const col = document.getElementById("colMargin");
+  col.innerHTML = "";
+  const usedLines = new Set();
+
+  state.activeSteers.forEach(st => {
+    let ln = Math.max(1, Math.min(state.visualLines.length, st.lineNum || state.visualLines.length));
+    while (usedLines.has(ln) && ln > 1) ln--;
+    usedLines.add(ln);
+
+    const vl = state.visualLines.find(v => v.lineNum === ln);
+    if (!vl) return;
+
+    const tag = document.createElement("div");
+    tag.className = "margin-tag";
+    tag.style.top = `${vl.topPx}px`;
+
+    const pct = Math.round(Math.min(1, Math.max(0, st.strength)) * 100);
+    // Half-moon / arc pie SVG icon
+    const angle = (st.strength * 359.9 * Math.PI) / 180;
+    const px = 5.5 + 4.5 * Math.sin(angle);
+    const py = 5.5 - 4.5 * Math.cos(angle);
+    const largeArc = st.strength > 0.5 ? 1 : 0;
+
+    tag.innerHTML = `
+      <svg width="11" height="11" viewBox="0 0 11 11">
+        <circle cx="5.5" cy="5.5" r="4.5" fill="none" stroke="${st.color}" stroke-width="1.1"/>
+        <path d="M 5.5 5.5 L 5.5 1 A 4.5 4.5 0 ${largeArc} 1 ${px.toFixed(2)} ${py.toFixed(2)} Z" fill="${st.color}" opacity="0.85"/>
+      </svg>
+      <span>
+        <span style="color:#6E7681;">${st.axis}:</span>
+        <span style="color:#D0D7DE;">${st.stop}</span>
+        <span style="color:${st.color};">${pct}%</span>
+      </span>
+    `;
+    tag.title = "Click to tune on Protractor | Right-Click to remove";
+    tag.onclick = () => {
+      state.dialOpen = true;
+      state.dialLevel = 2;
+      state.dialAxisId = st.axis;
+      document.getElementById("dialAnchor").style.display = "block";
+      syncDialBallToCurrentState();
+      renderDialOverlay();
+    };
+    tag.oncontextmenu = (e) => {
+      e.preventDefault();
+      invalidatePrefetch();
+      state.activeSteers.delete(st.axis);
+      renderAll();
+      inspectCursor();
+    };
+    col.appendChild(tag);
+  });
+}
+
+// Straight 1px Laser Rays from Pinned Phrases -> Reticle + Dotted Margin Trace
+function renderLaserRaysAndTraces() {
+  const svg = document.getElementById("raysSvg");
+  svg.innerHTML = "";
+  const gridRect = document.getElementById("instrumentGrid").getBoundingClientRect();
+  const rx = state.reticleXY.x;
+  const ry = state.reticleXY.y;
+
+  // 1) Straight 1px rays from every pinned token to ◎
+  state.pinnedTokens.forEach((pin, idx) => {
+    if (idx >= state.cursorPos) return;
+    const sp = document.querySelector(`#proseText .tok[data-idx="${idx}"]`);
+    if (!sp) return;
+    const r = sp.getBoundingClientRect();
+    const x1 = r.left + r.width / 2 - gridRect.left;
+    const y1 = r.bottom - gridRect.top - 3;
+
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", x1);
+    line.setAttribute("y1", y1);
+    line.setAttribute("x2", rx);
+    line.setAttribute("y2", ry);
+    line.setAttribute("stroke", "rgba(220, 226, 232, 0.44)");
+    line.setAttribute("stroke-width", "0.9");
+    svg.appendChild(line);
+  });
+
+  // 2) Faint dotted trace connecting floating right-margin tags down toward ◎
+  const tags = document.querySelectorAll("#colMargin .margin-tag");
+  if (tags.length > 0) {
+    const firstTag = tags[0].getBoundingClientRect();
+    const tx = firstTag.left - gridRect.left + 5;
+    const ty = firstTag.top + firstTag.height / 2 - gridRect.top;
+
+    const trace = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    trace.setAttribute("x1", tx);
+    trace.setAttribute("y1", ty + 8);
+    trace.setAttribute("x2", rx);
+    trace.setAttribute("y2", ry);
+    trace.setAttribute("stroke", "rgba(255, 255, 255, 0.22)");
+    trace.setAttribute("stroke-width", "1");
+    trace.setAttribute("stroke-dasharray", "2,4");
+    svg.appendChild(trace);
+  }
+}
+
+// =========================================================================
+// 3-Level 360° Polar Protractor & Circular Future-Word Wheel
+// =========================================================================
+const DIAL_TO_RAD = (d) => (d * Math.PI) / 180;
+
+function getDialOrigin(svg) {
+  const rect = svg.getBoundingClientRect();
+  return {
+    cx: rect.left + (190 / 380) * rect.width,
+    cy: rect.top + (16 / 230) * rect.height,
+  };
+}
+
+function angleToSectorIdx(degRaw, startDeg, endDeg, count) {
+  if (!count || count <= 1) return 0;
+  if (degRaw < -90) return 0;
+  if (degRaw < 0) return count - 1;
+  const t = Math.max(0, Math.min(0.999999, (startDeg - degRaw) / (startDeg - endDeg)));
+  return Math.floor(t * count);
+}
+
+function isInsideArcSpan(degRaw, startDeg, endDeg, pad = 16) {
+  return degRaw >= endDeg - pad && degRaw <= startDeg + pad;
+}
+
+function describeSectorArc(R, degA, degB) {
+  const x1 = R * Math.cos(DIAL_TO_RAD(degA));
+  const y1 = R * Math.sin(DIAL_TO_RAD(degA));
+  const x2 = R * Math.cos(DIAL_TO_RAD(degB));
+  const y2 = R * Math.sin(DIAL_TO_RAD(degB));
+  const largeArc = Math.abs(degA - degB) > 180 ? 1 : 0;
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${largeArc} 0 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+}
+
+function describeHitFan(R, startDeg, endDeg) {
+  const x1 = R * Math.cos(DIAL_TO_RAD(startDeg));
+  const y1 = R * Math.sin(DIAL_TO_RAD(startDeg));
+  const x2 = R * Math.cos(DIAL_TO_RAD(endDeg));
+  const y2 = R * Math.sin(DIAL_TO_RAD(endDeg));
+  const largeArc = Math.abs(startDeg - endDeg) > 180 ? 1 : 0;
+  return `M 0 0 L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${largeArc} 0 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
+}
+
+function appendCrosshairs(svg, kx, ky) {
+  const hCross = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  hCross.setAttribute("x1", "-1400"); hCross.setAttribute("y1", ky.toFixed(1));
+  hCross.setAttribute("x2", "1400"); hCross.setAttribute("y2", ky.toFixed(1));
+  hCross.setAttribute("stroke", "rgba(239, 68, 68, 0.28)");
+  hCross.setAttribute("stroke-width", "0.9");
+  svg.appendChild(hCross);
+
+  const vCross = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  vCross.setAttribute("x1", kx.toFixed(1)); vCross.setAttribute("y1", "-900");
+  vCross.setAttribute("x2", kx.toFixed(1)); vCross.setAttribute("y2", "1000");
+  vCross.setAttribute("stroke", "rgba(239, 68, 68, 0.28)");
+  vCross.setAttribute("stroke-width", "0.9");
+  svg.appendChild(vCross);
+}
+
+function appendRadialNeedle(svg, kx, ky, refR, dashed = false, tickDistances = null) {
+  const arm = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  arm.setAttribute("x1", "0"); arm.setAttribute("y1", "0");
+  arm.setAttribute("x2", kx.toFixed(2)); arm.setAttribute("y2", ky.toFixed(2));
+  arm.setAttribute("stroke", "#D0D7DE");
+  arm.setAttribute("stroke-width", dashed ? "1.1" : "1.4");
+  if (dashed) arm.setAttribute("stroke-dasharray", "2.5,3");
+  svg.appendChild(arm);
+
+  if (!dashed) {
+    const rLen = Math.hypot(kx, ky);
+    if (rLen > 12) {
+      const rad = Math.atan2(ky, kx);
+      const perp = rad + Math.PI / 2;
+      const dists = tickDistances || [0.25, 0.50, 0.75].map(f => refR * f);
+      dists.forEach(dist => {
+        if (dist < rLen - 6) {
+          const mx = dist * Math.cos(rad);
+          const my = dist * Math.sin(rad);
+          const ntk = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          ntk.setAttribute("x1", (mx - 3 * Math.cos(perp)).toFixed(2));
+          ntk.setAttribute("y1", (my - 3 * Math.sin(perp)).toFixed(2));
+          ntk.setAttribute("x2", (mx + 3 * Math.cos(perp)).toFixed(2));
+          ntk.setAttribute("y2", (my + 3 * Math.sin(perp)).toFixed(2));
+          ntk.setAttribute("stroke", "#D0D7DE");
+          ntk.setAttribute("stroke-width", "1");
+          svg.appendChild(ntk);
+        }
+      });
+    }
+  }
+}
+
+function appendPieBall(svg, kx, ky, frac, accentColor = "#E05246", onDown = null) {
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.setAttribute("class", "dial-ball");
+  g.style.cursor = state.dialDragging ? "grabbing" : "grab";
+
+  const base = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  base.setAttribute("cx", kx.toFixed(2)); base.setAttribute("cy", ky.toFixed(2));
+  base.setAttribute("r", "6.5");
+  base.setAttribute("fill", "#141820");
+  base.setAttribute("stroke", accentColor);
+  base.setAttribute("stroke-width", "1.4");
+  g.appendChild(base);
+
+  const clampedFrac = Math.max(0, Math.min(1, frac));
+  if (clampedFrac >= 0.99) {
+    const full = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    full.setAttribute("cx", kx.toFixed(2)); full.setAttribute("cy", ky.toFixed(2));
+    full.setAttribute("r", "5.5");
+    full.setAttribute("fill", accentColor);
+    g.appendChild(full);
+  } else if (clampedFrac > 0.02) {
+    const ang = clampedFrac * 2 * Math.PI;
+    const rFill = 5.5;
+    const px = kx + rFill * Math.sin(ang);
+    const py = ky - rFill * Math.cos(ang);
+    const largeArc = clampedFrac > 0.5 ? 1 : 0;
+    const wedge = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    wedge.setAttribute(
+      "d",
+      `M ${kx.toFixed(2)} ${ky.toFixed(2)} L ${kx.toFixed(2)} ${(ky - rFill).toFixed(2)} A ${rFill} ${rFill} 0 ${largeArc} 1 ${px.toFixed(2)} ${py.toFixed(2)} Z`
+    );
+    wedge.setAttribute("fill", accentColor);
+    g.appendChild(wedge);
+  }
+
+  const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  halo.setAttribute("cx", kx.toFixed(2)); halo.setAttribute("cy", ky.toFixed(2));
+  halo.setAttribute("r", "22");
+  halo.setAttribute("fill", "transparent");
+  halo.setAttribute("class", "dial-ball");
+  g.appendChild(halo);
+
+  if (onDown) g.onmousedown = onDown;
+  svg.appendChild(g);
+}
+
+function bindGlobalDialDrag(svg, onMovePoint, onEnd = null) {
+  return (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const downX = e.clientX;
+    const downY = e.clientY;
+    let moved = false;
+    state.dialDragging = true;
+    onMovePoint(e.clientX, e.clientY, false);
+
+    const onMove = (me) => {
+      if (Math.hypot(me.clientX - downX, me.clientY - downY) > 4) moved = true;
+      onMovePoint(me.clientX, me.clientY, moved);
+    };
+    const onUp = (ue) => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      state.dialDragging = false;
+      if (onEnd) onEnd(moved, ue);
+      if (state.dialOpen) renderDialOverlay();
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+}
+
+function syncDialBallToCurrentState() {
+  const axes = state.axes.length ? state.axes : FALLBACK_AXES;
+  if (state.dialLevel === 1) {
+    const start1 = 166, end1 = 14, R1 = 122;
+    const idx = Math.max(0, axes.findIndex(a => a.id === state.dialAxisId));
+    const deg = start1 - ((idx + 0.5) / Math.max(1, axes.length)) * (start1 - end1);
+    const rad = DIAL_TO_RAD(deg);
+    state.dialBallPos = { x: R1 * 0.62 * Math.cos(rad), y: R1 * 0.62 * Math.sin(rad) };
+  } else if (state.dialLevel === 2) {
+    const start2 = 152, end2 = 28, R2 = 148;
+    const ax = axes.find(a => a.id === state.dialAxisId) || axes[0];
+    const st = state.activeSteers.get(ax.id);
+    let stopIdx = st ? ax.stops.findIndex(s => s.name === st.stop) : (ax.default_stop || 0);
+    if (stopIdx < 0) stopIdx = ax.default_stop || 0;
+    state.dialStopIdx = stopIdx;
+    const strength = st ? st.strength : 0.75;
+    const deg = start2 - ((stopIdx + 0.5) / Math.max(1, ax.stops.length)) * (start2 - end2);
+    const rad = DIAL_TO_RAD(deg);
+    const r = Math.max(22, strength * R2);
+    state.dialBallPos = { x: r * Math.cos(rad), y: r * Math.sin(rad) };
+  } else {
+    state.dialWordIdx = 0;
+    state.dialBallPos = { x: 0, y: 52 };
+  }
+}
+
+function applyLevel2SteerAtPoint(kx, ky) {
+  const R2 = 148, start2 = 152, end2 = 28;
+  const axes = state.axes.length ? state.axes : FALLBACK_AXES;
+  const ax = axes.find(a => a.id === state.dialAxisId) || axes[0];
+  const M = Math.max(1, ax.stops.length);
+  const r = Math.hypot(kx, ky);
+  const degRaw = (Math.atan2(ky, kx) * 180) / Math.PI;
+  const stopIdx = angleToSectorIdx(degRaw, start2, end2, M);
+  const strength = r < 18 ? 0 : Math.min(1, Math.round((r / R2) * 20) / 20);
+  const prevObj = state.activeSteers.get(ax.id);
+  const prevStopIdx = state.dialStopIdx;
+
+  state.dialStopIdx = stopIdx;
+  const chosenStop = ax.stops[stopIdx]?.name || ax.stops[0].name;
+
+  if (strength <= 0.02) {
+    state.activeSteers.delete(ax.id);
+  } else {
+    const curLn = state.visualLines.findLast
+      ? (state.visualLines.findLast(l => !l.isFuture)?.lineNum || 1)
+      : state.visualLines.length;
+    state.activeSteers.set(ax.id, {
+      axis: ax.id,
+      stop: chosenStop,
+      strength,
+      color: ax.color || "#EF4444",
+      lineNum: prevObj?.lineNum || curLn,
+    });
+  }
+
+  const changed = prevStopIdx !== stopIdx || (prevObj?.strength || 0) !== strength;
+  if (changed) {
+    sfx.click(950 + strength * 700, 0.006, 0.025);
+    renderRightMarginTags();
+    renderLaserRaysAndTraces();
+    updateMicroHud();
+    scheduleDialInspect(180);
+  }
+  return { r, degRaw, strength, stopIdx };
+}
+
+const RING_BASE_R = 104;
+const RING_STEP_R = 68;
+const MAX_WORD_RINGS = 6;
+
+function resetWordRingsFromTopK() {
+  const cands = (state.lastTopK || []).slice(0, 6);
+  state.wordRings = [{
+    ringIdx: 0,
+    radius: RING_BASE_R,
+    cands,
+    chosenIdx: null,
+    loading: cands.length === 0,
+  }];
+  state.dialWordIdx = 0;
+  clearWheelGhostPreview();
+}
+
+function getStagedWordChain() {
+  const chain = [];
+  for (const rg of state.wordRings) {
+    if (rg.chosenIdx !== null && rg.cands && rg.cands[rg.chosenIdx]) {
+      const c = rg.cands[rg.chosenIdx];
+      chain.push({ id: c.id, token: c.token, prob: c.prob });
+    }
+  }
+  return chain;
+}
+
+function clearWheelGhostPreview() {
+  const old = document.getElementById("wheelGhostPreview");
+  if (old) old.remove();
+}
+
+function updateWheelGhostPreview() {
+  clearWheelGhostPreview();
+  const staged = getStagedWordChain();
+  if (!staged.length) return;
+  const retEl = document.getElementById("inlineReticle");
+  if (!retEl) return;
+  const span = document.createElement("span");
+  span.id = "wheelGhostPreview";
+  span.className = "wheel-ghost-preview";
+  span.textContent = staged.map(w => w.token).join("");
+  retEl.after(span);
+}
+
+async function fetchWordRingCandidates(ringIdx, stagedIds) {
+  const cacheKey = `${state.cursorPos}|${state.temperature}|${state.topK}|${state.topP}|${JSON.stringify(buildSteerPayload())}|${JSON.stringify(buildAttnBiasMap())}|${stagedIds.join(",")}`;
+  if (state.ringInspectCache.has(cacheKey)) {
+    if (state.wordRings[ringIdx]) {
+      state.wordRings[ringIdx].cands = state.ringInspectCache.get(cacheKey);
+      state.wordRings[ringIdx].loading = false;
+      renderDialOverlay();
+    }
+    return;
+  }
+  const seq = ++state.ringFetchSeq;
+  if (state.prefetchInFlight && state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.prefetchInFlight = false;
+    state.prefetchGenId++;
+    state.ws.send(JSON.stringify({ action: "cancel_prefetch" }));
+  }
+  try {
+    const baseIds = state.pieces.slice(0, state.cursorPos).map(p => p.id);
+    const res = await fetch(`${API_BASE}/api/inspect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token_ids: baseIds.concat(stagedIds),
+        temperature: state.temperature,
+        top_k: Math.max(state.topK || 10, 6),
+        top_p: state.topP,
+        attn_biases: buildAttnBiasMap(),
+        steering: buildSteerPayload(),
+      }),
+    });
+    const data = await res.json();
+    const cands = (data.top_k || []).slice(0, 6);
+    state.ringInspectCache.set(cacheKey, cands);
+    if (seq === state.ringFetchSeq && state.wordRings[ringIdx]) {
+      state.wordRings[ringIdx].cands = cands;
+      state.wordRings[ringIdx].loading = false;
+      renderDialOverlay();
+    }
+  } catch (_) {
+    if (seq === state.ringFetchSeq && state.wordRings[ringIdx]) {
+      state.wordRings[ringIdx].loading = false;
+      renderDialOverlay();
+    }
+  }
+}
+
+function commitStagedWordChain(staged) {
+  clearWheelGhostPreview();
+  if (!staged || staged.length === 0) return;
+  saveUndoSnapshot();
+  invalidatePrefetch();
+  for (const w of staged) {
+    appendTokenFast(w.id, w.token, 120.0);
+  }
+  sfx.click(1760, 0.018, 0.06);
+  state.wordRings = [];
+  state.dialWordIdx = 0;
+  state.dialBallPos = { x: 0, y: 48 };
+  inspectCursor();
+}
+
+function handleDialPointer(clientX, clientY, svg, isDrag) {
+  const { cx, cy } = getDialOrigin(svg);
+  const rawDx = clientX - cx;
+  const rawDy = clientY - cy;
+  const rawR = Math.hypot(rawDx, rawDy);
+  const maxR = 540;
+  const scale = rawR > maxR ? (maxR / rawR) : 1;
+  const kx = rawDx * scale;
+  const ky = rawDy * scale;
+  const r = Math.hypot(kx, ky);
+  const degRaw = (Math.atan2(ky, kx) * 180) / Math.PI;
+  const now = performance.now();
+  const axes = state.axes.length ? state.axes : FALLBACK_AXES;
+
+  state.dialBallPos = { x: kx, y: ky };
+
+  if (state.dialLevel === 1) {
+    const R1 = 122, start1 = 166, end1 = 14;
+    const idx = angleToSectorIdx(degRaw, start1, end1, axes.length);
+    if (axes[idx] && axes[idx].id !== state.dialAxisId) {
+      state.dialAxisId = axes[idx].id;
+      sfx.click(1250, 0.006, 0.025);
+    }
+    if (isDrag && r >= R1 - 2 && isInsideArcSpan(degRaw, start1, end1) && now >= state.dialCrossCooldown) {
+      state.dialLevel = 2;
+      state.dialCrossCooldown = now + 280;
+      sfx.click(1520, 0.014, 0.05);
+      applyLevel2SteerAtPoint(kx, ky);
+    }
+  } else if (state.dialLevel === 2) {
+    const R2 = 148, start2 = 152, end2 = 28;
+    applyLevel2SteerAtPoint(kx, ky);
+    if (isDrag && r >= R2 + 28 && isInsideArcSpan(degRaw, start2, end2) && now >= state.dialCrossCooldown) {
+      state.dialLevel = 3;
+      state.dialCrossCooldown = now + 350;
+      state.dialWaitReleaseForRing = true;
+      state.dialBallPos = { x: 0, y: 52 };
+      state.dialWordIdx = 0;
+      sfx.click(1680, 0.015, 0.05);
+      if (state.dialInspectTimer) clearTimeout(state.dialInspectTimer);
+      invalidatePrefetch();
+      resetWordRingsFromTopK();
+      inspectCursor();
+    }
+  } else {
+    if (!state.wordRings.length) resetWordRingsFromTopK();
+    if (state.dialWaitReleaseForRing) {
+      if (r < RING_BASE_R - 8) {
+        state.dialWaitReleaseForRing = false;
+      } else {
+        renderDialOverlay();
+        return;
+      }
+    }
+
+    // Inward Retraction: pulling inside inner ring collapses outer ring(s)
+    while (state.wordRings.length > 1 && r < state.wordRings[state.wordRings.length - 2].radius - 10) {
+      state.wordRings.pop();
+      state.wordRings[state.wordRings.length - 1].chosenIdx = null;
+      state.ringFetchSeq++;
+      sfx.click(920, 0.007, 0.025);
+    }
+
+    const activeRing = state.wordRings[state.wordRings.length - 1];
+    const start3 = 158, end3 = 22;
+    if (activeRing && activeRing.cands && activeRing.cands.length > 0 && !activeRing.loading) {
+      const wordIdx = angleToSectorIdx(degRaw, start3, end3, activeRing.cands.length);
+      if (wordIdx !== state.dialWordIdx) {
+        state.dialWordIdx = wordIdx;
+        sfx.click(1320, 0.006, 0.025);
+      }
+      // Outward Crossing -> lock chosen word & spawn next larger concentric ring (NO direct prose commit yet!)
+      if (
+        isDrag &&
+        !state.dialWaitReleaseForRing &&
+        activeRing.chosenIdx === null &&
+        state.wordRings.length < MAX_WORD_RINGS &&
+        r >= activeRing.radius &&
+        isInsideArcSpan(degRaw, start3, end3, 18)
+      ) {
+        activeRing.chosenIdx = wordIdx;
+        sfx.click(1500 + state.wordRings.length * 90, 0.012, 0.04);
+        const stagedIds = getStagedWordChain().map(w => w.id);
+        const nextIdx = state.wordRings.length;
+        state.wordRings.push({
+          ringIdx: nextIdx,
+          radius: RING_BASE_R + nextIdx * RING_STEP_R,
+          cands: [],
+          chosenIdx: null,
+          loading: true,
+        });
+        state.dialWordIdx = 0;
+        fetchWordRingCandidates(nextIdx, stagedIds);
+      }
+    }
+    updateWheelGhostPreview();
+  }
+  renderDialOverlay();
+}
+
+function renderDialOverlay() {
+  const anchor = document.getElementById("dialAnchor");
+  const svg = document.getElementById("dialSvg");
+  const actions = document.getElementById("dialMicroActions");
+
+  const rx = state.reticleXY.x;
+  const ry = state.reticleXY.y;
+  anchor.style.left = `${rx - 190}px`;
+  anchor.style.top = `${ry - 16}px`;
+  svg.innerHTML = "";
+
+  const startWheelDrag = bindGlobalDialDrag(
+    svg,
+    (cx, cy, moved) => handleDialPointer(cx, cy, svg, moved),
+    (moved) => {
+      state.dialWaitReleaseForRing = false;
+      if (state.dialLevel === 2 && moved) {
+        if (state.dialInspectTimer) clearTimeout(state.dialInspectTimer);
+        invalidatePrefetch();
+        inspectCursor();
+      } else if (state.dialLevel === 3) {
+        const staged = getStagedWordChain();
+        clearWheelGhostPreview();
+        if (staged.length > 0) {
+          commitStagedWordChain(staged);
+        } else if (moved) {
+          state.dialBallPos = { x: 0, y: 48 };
+        }
+      }
+    }
+  );
+
+  const axes = state.axes.length ? state.axes : FALLBACK_AXES;
+  const { x: bx, y: by } = state.dialBallPos || { x: 0, y: 78 };
+
+  if (state.dialLevel === 1) {
+    // -----------------------------------------------------------------
+    // LEVEL 1: 360° Polar Axes Wheel (drag across any spoke/arc -> Level 2)
+    // -----------------------------------------------------------------
+    const R = 122, startDeg = 166, endDeg = 14;
+    const n = Math.max(1, axes.length);
+
+    const hitFan = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    hitFan.setAttribute("d", describeHitFan(R + 14, 174, 6));
+    hitFan.setAttribute("fill", "transparent");
+    hitFan.setAttribute("class", "dial-hit");
+    hitFan.onmousedown = startWheelDrag;
+    svg.appendChild(hitFan);
+
+    // Dashed base semicircle + center plumb line
+    const arc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    arc.setAttribute("d", describeSectorArc(R, startDeg, endDeg));
+    arc.setAttribute("fill", "none");
+    arc.setAttribute("stroke", "#D0D7DE");
+    arc.setAttribute("stroke-width", "1.1");
+    arc.setAttribute("stroke-dasharray", "3,4");
+    svg.appendChild(arc);
+
+    const plumb = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    plumb.setAttribute("x1", "0"); plumb.setAttribute("y1", "-48");
+    plumb.setAttribute("x2", "0"); plumb.setAttribute("y2", R + 10);
+    plumb.setAttribute("stroke", "rgba(255,255,255,0.12)");
+    plumb.setAttribute("stroke-width", "0.8");
+    svg.appendChild(plumb);
+
+    const selIdx = Math.max(0, axes.findIndex(a => a.id === state.dialAxisId));
+
+    // Boundary perpendicular divider ticks
+    for (let b = 0; b <= n; b++) {
+      const bDeg = startDeg - (b / n) * (startDeg - endDeg);
+      const bRad = DIAL_TO_RAD(bDeg);
+      const tick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      tick.setAttribute("x1", ((R - 4) * Math.cos(bRad)).toFixed(2));
+      tick.setAttribute("y1", ((R - 4) * Math.sin(bRad)).toFixed(2));
+      tick.setAttribute("x2", ((R + 4) * Math.cos(bRad)).toFixed(2));
+      tick.setAttribute("y2", ((R + 4) * Math.sin(bRad)).toFixed(2));
+      tick.setAttribute("stroke", "rgba(208,215,222,0.55)");
+      tick.setAttribute("stroke-width", "1");
+      svg.appendChild(tick);
+    }
+
+    // Highlight selected axis sector arc in coral
+    const sDegA = startDeg - (selIdx / n) * (startDeg - endDeg);
+    const sDegB = startDeg - ((selIdx + 1) / n) * (startDeg - endDeg);
+    const selArc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    selArc.setAttribute("d", describeSectorArc(R, sDegA, sDegB));
+    selArc.setAttribute("fill", "none");
+    selArc.setAttribute("stroke", "#E05246");
+    selArc.setAttribute("stroke-width", "2.4");
+    svg.appendChild(selArc);
+
+    // Axis sector wedges + labels
+    axes.forEach((ax, i) => {
+      const degA = startDeg - (i / n) * (startDeg - endDeg);
+      const degB = startDeg - ((i + 1) / n) * (startDeg - endDeg);
+      const midDeg = (degA + degB) / 2;
+      const rad = DIAL_TO_RAD(midDeg);
+      const isActive = state.activeSteers.has(ax.id);
+      const isSelected = i === selIdx;
+
+      if (isActive && !isSelected) {
+        const px = R * Math.cos(rad);
+        const py = R * Math.sin(rad);
+        const spoke = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        spoke.setAttribute("x1", "0"); spoke.setAttribute("y1", "0");
+        spoke.setAttribute("x2", px.toFixed(1)); spoke.setAttribute("y2", py.toFixed(1));
+        spoke.setAttribute("stroke", "#484F58");
+        spoke.setAttribute("stroke-width", "1");
+        spoke.setAttribute("stroke-dasharray", "2.5,3");
+        svg.appendChild(spoke);
+      }
+
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("class", "dial-spoke");
+
+      // Wide clickable hit arc per axis
+      const hitArc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      hitArc.setAttribute("d", describeSectorArc(R, degA, degB));
+      hitArc.setAttribute("fill", "none");
+      hitArc.setAttribute("stroke", "transparent");
+      hitArc.setAttribute("stroke-width", "26");
+      g.appendChild(hitArc);
+
+      const anc = midDeg > 102 ? "end" : (midDeg < 78 ? "start" : "middle");
+      const lx = (R + 18) * Math.cos(rad) + (anc === "end" ? -4 : (anc === "start" ? 4 : 0));
+      const ly = (R + 20) * Math.sin(rad);
+      const activeObj = state.activeSteers.get(ax.id);
+      const lblTxt = activeObj ? `${ax.label}: ${activeObj.stop}` : ax.label;
+
+      if (isSelected) {
+        const bw = lblTxt.length * 6.5 + 10;
+        const rectX = anc === "end" ? lx - bw + 4 : (anc === "start" ? lx - 4 : lx - bw / 2);
+        const badge = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        badge.setAttribute("x", rectX.toFixed(1));
+        badge.setAttribute("y", (ly - 9).toFixed(1));
+        badge.setAttribute("width", bw.toFixed(1));
+        badge.setAttribute("height", "15");
+        badge.setAttribute("fill", "#E05246");
+        g.appendChild(badge);
+      }
+
+      const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      txt.setAttribute("x", lx.toFixed(1));
+      txt.setAttribute("y", (ly + 2).toFixed(1));
+      txt.setAttribute("fill", isSelected ? "#000000" : (isActive ? "#F0F6FC" : "#8B949E"));
+      txt.setAttribute("font-weight", isSelected ? "700" : "400");
+      txt.setAttribute("font-size", "10");
+      txt.setAttribute("text-anchor", anc);
+      txt.textContent = lblTxt;
+      g.appendChild(txt);
+
+      g.onmouseenter = () => {
+        if (!state.dialDragging && state.dialAxisId !== ax.id) {
+          state.dialAxisId = ax.id;
+          const rCur = Math.min(R - 14, Math.max(42, Math.hypot(bx, by)));
+          state.dialBallPos = { x: rCur * Math.cos(rad), y: rCur * Math.sin(rad) };
+          sfx.click(1250, 0.006, 0.025);
+          renderDialOverlay();
+        }
+      };
+      g.onmousedown = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+      };
+      g.onclick = (e) => {
+        e.stopPropagation();
+        sfx.click(1500, 0.015, 0.05);
+        state.dialAxisId = ax.id;
+        state.dialLevel = 2;
+        syncDialBallToCurrentState();
+        renderDialOverlay();
+      };
+      svg.appendChild(g);
+    });
+
+    appendCrosshairs(svg, bx, by);
+    appendRadialNeedle(svg, bx, by, R, true);
+    const activeSelObj = state.activeSteers.get(axes[selIdx]?.id);
+    const frac1 = activeSelObj ? activeSelObj.strength : Math.min(1, Math.hypot(bx, by) / R);
+    appendPieBall(svg, bx, by, frac1, "#E05246", startWheelDrag);
+
+    const curAx = axes[selIdx] || axes[0];
+    const stopLinks = curAx.stops.map(s => `<span style="color:#D0D7DE;">${s.name}</span>`).join(` <span style="color:#484F58;">·</span> `);
+    const nextHtml = renderWheelPredRow();
+    actions.style.top = "186px";
+    actions.innerHTML = `
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+        <div><span style="color:#6E7681;">${curAx.label}:</span> ${stopLinks} &nbsp; <span class="dial-micro-btn" onclick="openWordWheel()">[words ◯]</span> <span class="dial-micro-btn" onclick="openCustomAxis()">[+ custom]</span> <span class="dial-micro-btn" onclick="closeDial()">[✕]</span></div>
+        ${nextHtml}
+      </div>
+    `;
+    wireWheelPredClicks(actions);
+  } else if (state.dialLevel === 2) {
+    // -----------------------------------------------------------------
+    // LEVEL 2: Exact Multi-Stop Protractor + 360° Pie Ball + Outer Word Crossing
+    // -----------------------------------------------------------------
+    const ax = axes.find(a => a.id === state.dialAxisId) || axes[0];
+    const stops = ax.stops && ax.stops.length ? ax.stops : [{ name: "low" }, { name: "high" }];
+    const M = stops.length;
+    const R = 148, startDeg = 152, endDeg = 28;
+
+    const hitFan = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    hitFan.setAttribute("d", describeHitFan(R + 18, 166, 14));
+    hitFan.setAttribute("fill", "transparent");
+    hitFan.setAttribute("class", "dial-hit");
+    hitFan.onmousedown = startWheelDrag;
+    svg.appendChild(hitFan);
+
+    // 1) Faint concentric percentage rings (25, 50, 75)
+    [0.25, 0.50, 0.75].forEach(frac => {
+      const rIn = R * frac;
+      const ring = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      ring.setAttribute("d", describeSectorArc(rIn, startDeg, endDeg));
+      ring.setAttribute("fill", "none");
+      ring.setAttribute("stroke", "rgba(255,255,255,0.08)");
+      ring.setAttribute("stroke-width", "0.8");
+      svg.appendChild(ring);
+
+      const gl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      gl.setAttribute("x", (rIn * Math.cos(DIAL_TO_RAD(144)) - 8).toFixed(1));
+      gl.setAttribute("y", (rIn * Math.sin(DIAL_TO_RAD(144)) - 2).toFixed(1));
+      gl.setAttribute("fill", "#6E7681");
+      gl.setAttribute("font-size", "9");
+      gl.setAttribute("text-anchor", "end");
+      gl.textContent = Math.round(frac * 100);
+      svg.appendChild(gl);
+    });
+
+    const activeObj = state.activeSteers.get(ax.id);
+    const degBall = (Math.atan2(by, bx) * 180) / Math.PI;
+    const stopIdx = state.dialDragging
+      ? angleToSectorIdx(degBall, startDeg, endDeg, M)
+      : Math.max(0, Math.min(M - 1, state.dialStopIdx || 0));
+    const rBall = Math.hypot(bx, by);
+    const val = activeObj ? activeObj.strength : (rBall < 18 ? 0 : Math.min(1, Math.round((rBall / R) * 20) / 20));
+
+    // 2) Draw ALL M stop sectors along the circular arc (matches Images 2 & 3!)
+    stops.forEach((st, i) => {
+      const degA = startDeg - (i / M) * (startDeg - endDeg);
+      const degB = startDeg - ((i + 1) / M) * (startDeg - endDeg);
+      const midDeg = (degA + degB) / 2;
+      const midRad = DIAL_TO_RAD(midDeg);
+      const isSelected = i === stopIdx;
+
+      const secGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      secGroup.setAttribute("class", "dial-sector");
+
+      const hitArc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      hitArc.setAttribute("d", describeSectorArc(R, degA, degB));
+      hitArc.setAttribute("fill", "none");
+      hitArc.setAttribute("stroke", "transparent");
+      hitArc.setAttribute("stroke-width", "28");
+      secGroup.appendChild(hitArc);
+
+      if (isSelected) {
+        const glowArc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        glowArc.setAttribute("d", describeSectorArc(R, degA, degB));
+        glowArc.setAttribute("fill", "none");
+        glowArc.setAttribute("stroke", "rgba(224, 82, 70, 0.35)");
+        glowArc.setAttribute("stroke-width", "6");
+        secGroup.appendChild(glowArc);
+      }
+
+      const visArc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      visArc.setAttribute("d", describeSectorArc(R, degA, degB));
+      visArc.setAttribute("fill", "none");
+      visArc.setAttribute("stroke", isSelected ? "#E05246" : "#D0D7DE");
+      visArc.setAttribute("stroke-width", isSelected ? "2.8" : "1.2");
+      secGroup.appendChild(visArc);
+
+      const anc = midDeg > 115 ? "end" : (midDeg < 65 ? "start" : "middle");
+      const lx = (R + 18) * Math.cos(midRad) + (anc === "end" ? -4 : (anc === "start" ? 4 : 0));
+      const ly = (R + 20) * Math.sin(midRad);
+
+      if (isSelected) {
+        const bw = st.name.length * 6.5 + 10;
+        const rectX = anc === "end" ? lx - bw + 4 : (anc === "start" ? lx - 4 : lx - bw / 2);
+        const pill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        pill.setAttribute("x", rectX.toFixed(1));
+        pill.setAttribute("y", (ly - 9).toFixed(1));
+        pill.setAttribute("width", bw.toFixed(1));
+        pill.setAttribute("height", "15");
+        pill.setAttribute("fill", "#E05246");
+        secGroup.appendChild(pill);
+      }
+
+      const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      txt.setAttribute("x", lx.toFixed(1));
+      txt.setAttribute("y", (ly + 2).toFixed(1));
+      txt.setAttribute("fill", isSelected ? "#000000" : "#8B949E");
+      txt.setAttribute("font-weight", isSelected ? "700" : "400");
+      txt.setAttribute("font-size", "10");
+      txt.setAttribute("text-anchor", anc);
+      txt.textContent = st.name;
+      secGroup.appendChild(txt);
+
+      secGroup.onmousedown = startWheelDrag;
+      svg.appendChild(secGroup);
+    });
+
+    // Sector perpendicular boundary divider ticks
+    for (let b = 0; b <= M; b++) {
+      const bDeg = startDeg - (b / M) * (startDeg - endDeg);
+      const bRad = DIAL_TO_RAD(bDeg);
+      const tk = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      tk.setAttribute("x1", ((R - 5) * Math.cos(bRad)).toFixed(2));
+      tk.setAttribute("y1", ((R - 5) * Math.sin(bRad)).toFixed(2));
+      tk.setAttribute("x2", ((R + 5) * Math.cos(bRad)).toFixed(2));
+      tk.setAttribute("y2", ((R + 5) * Math.sin(bRad)).toFixed(2));
+      tk.setAttribute("stroke", "#D0D7DE");
+      tk.setAttribute("stroke-width", "1.2");
+      svg.appendChild(tk);
+    }
+
+    // 3) Crosshairs + graduated needle + 360° coral pie-wedge orange ball
+    appendCrosshairs(svg, bx, by);
+    appendRadialNeedle(svg, bx, by, R, false);
+    appendPieBall(svg, bx, by, val, "#E05246", startWheelDrag);
+
+    const chosenLbl = stops[stopIdx]?.name || "";
+    const pctNum = Math.round(val * 100);
+    const nextHtml = renderWheelPredRow();
+    actions.style.top = "204px";
+    actions.innerHTML = `
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+        <div>
+          <span style="color:#6E7681;">${ax.label}:</span>
+          <span style="color:#E05246; font-weight:700;">${chosenLbl}</span>
+          <span style="color:#F0F6FC; font-weight:700;">${pctNum}%</span>
+          &nbsp; <span class="dial-micro-btn" onclick="backToAxes()">[← axes]</span>
+          <span class="dial-micro-btn" onclick="openWordWheel()">[words ◯]</span>
+          <span class="dial-micro-btn" onclick="clearCurrentAxisSteer()">[0%]</span>
+          <span class="dial-micro-btn" onclick="closeDial()">[done]</span>
+        </div>
+        ${nextHtml}
+      </div>
+    `;
+    wireWheelPredClicks(actions);
+  } else {
+    // -----------------------------------------------------------------
+    // LEVEL 3: Concentric Multi-Ring Speculative Word Tree (grow outward -> release click to commit!)
+    // -----------------------------------------------------------------
+    if (!state.wordRings.length) resetWordRingsFromTopK();
+    const startDeg = 158, endDeg = 22;
+    const rings = state.wordRings;
+    const outerR = rings[rings.length - 1]?.radius || RING_BASE_R;
+
+    const hitFan = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    hitFan.setAttribute("d", describeHitFan(outerR + 22, 168, 12));
+    hitFan.setAttribute("fill", "transparent");
+    hitFan.setAttribute("class", "dial-hit");
+    hitFan.onmousedown = startWheelDrag;
+    svg.appendChild(hitFan);
+
+    // Subtle inner reference guide inside Ring 0
+    const innerGuideR = RING_BASE_R * 0.48;
+    const innerGuide = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    innerGuide.setAttribute("d", describeSectorArc(innerGuideR, startDeg, endDeg));
+    innerGuide.setAttribute("fill", "none");
+    innerGuide.setAttribute("stroke", "rgba(255,255,255,0.06)");
+    innerGuide.setAttribute("stroke-width", "0.8");
+    svg.appendChild(innerGuide);
+
+    const degBall = (Math.atan2(by, bx) * 180) / Math.PI;
+    let hoveredWordCand = null;
+
+    rings.forEach((rg, ringIdx) => {
+      const isActiveRing = ringIdx === rings.length - 1;
+      const R = rg.radius;
+      const cands = rg.cands || [];
+      const K = Math.max(1, cands.length);
+
+      if (rg.loading || cands.length === 0) {
+        const loadArc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        loadArc.setAttribute("d", describeSectorArc(R, startDeg, endDeg));
+        loadArc.setAttribute("fill", "none");
+        loadArc.setAttribute("stroke", "#484F58");
+        loadArc.setAttribute("stroke-width", "1.2");
+        loadArc.setAttribute("stroke-dasharray", "3,4");
+        svg.appendChild(loadArc);
+
+        const loadTxt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        loadTxt.setAttribute("x", "0");
+        loadTxt.setAttribute("y", (R + 18).toString());
+        loadTxt.setAttribute("fill", "#6E7681");
+        loadTxt.setAttribute("font-size", "10");
+        loadTxt.setAttribute("text-anchor", "middle");
+        loadTxt.textContent = rg.loading ? "predicting next..." : "no next candidates";
+        svg.appendChild(loadTxt);
+        return;
+      }
+
+      const selIdx = isActiveRing
+        ? (state.dialDragging ? angleToSectorIdx(degBall, startDeg, endDeg, K) : Math.max(0, Math.min(K - 1, state.dialWordIdx || 0)))
+        : rg.chosenIdx;
+
+      if (isActiveRing && cands[selIdx]) {
+        hoveredWordCand = cands[selIdx];
+      }
+
+      cands.forEach((c, i) => {
+        const degA = startDeg - (i / K) * (startDeg - endDeg);
+        const degB = startDeg - ((i + 1) / K) * (startDeg - endDeg);
+        const midDeg = (degA + degB) / 2;
+        const midRad = DIAL_TO_RAD(midDeg);
+        const isSelected = i === selIdx;
+        const accent = !c.in_nucleus ? "#6E7681" : (c.rank === 1 ? "#22C55E" : "#E05246");
+
+        const secGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        secGroup.setAttribute("class", "dial-sector");
+
+        const hitArc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        hitArc.setAttribute("d", describeSectorArc(R, degA, degB));
+        hitArc.setAttribute("fill", "none");
+        hitArc.setAttribute("stroke", "transparent");
+        hitArc.setAttribute("stroke-width", isActiveRing ? "28" : "18");
+        secGroup.appendChild(hitArc);
+
+        if (isSelected) {
+          const glowArc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          glowArc.setAttribute("d", describeSectorArc(R, degA, degB));
+          glowArc.setAttribute("fill", "none");
+          glowArc.setAttribute("stroke", accent);
+          glowArc.setAttribute("stroke-opacity", isActiveRing ? "0.38" : "0.28");
+          glowArc.setAttribute("stroke-width", "6");
+          secGroup.appendChild(glowArc);
+        }
+
+        const visArc = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        visArc.setAttribute("d", describeSectorArc(R, degA, degB));
+        visArc.setAttribute("fill", "none");
+        visArc.setAttribute(
+          "stroke",
+          isSelected ? accent : (isActiveRing ? "#D0D7DE" : "rgba(208, 215, 222, 0.20)")
+        );
+        visArc.setAttribute("stroke-width", isSelected ? (isActiveRing ? "2.8" : "3.0") : "1.2");
+        secGroup.appendChild(visArc);
+
+        const rawTok = c.token.replace(/\n/g, "↵");
+        const cleanTok = rawTok.trim() || rawTok;
+        const label = `${c.rank}.${cleanTok} ${Math.round(c.prob)}%`;
+        const anc = midDeg > 106 ? "end" : (midDeg < 74 ? "start" : "middle");
+        const rOff = isActiveRing
+          ? ((midDeg > 70 && midDeg < 110 && K >= 5 && i % 2 === 1) ? 32 : 18)
+          : (isSelected ? 16 : 14);
+        const rLbl = R + rOff;
+        const lx = rLbl * Math.cos(midRad) + (anc === "end" ? -4 : (anc === "start" ? 4 : 0));
+        const ly = rLbl * Math.sin(midRad);
+
+        if (isSelected) {
+          const bw = label.length * 6.3 + 10;
+          const rectX = anc === "end" ? lx - bw + 4 : (anc === "start" ? lx - 4 : lx - bw / 2);
+          const pill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          pill.setAttribute("x", rectX.toFixed(1));
+          pill.setAttribute("y", (ly - 9).toFixed(1));
+          pill.setAttribute("width", bw.toFixed(1));
+          pill.setAttribute("height", "15");
+          pill.setAttribute("fill", accent);
+          secGroup.appendChild(pill);
+        }
+
+        const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        txt.setAttribute("x", lx.toFixed(1));
+        txt.setAttribute("y", (ly + 2).toFixed(1));
+        txt.setAttribute(
+          "fill",
+          isSelected
+            ? "#000000"
+            : (!isActiveRing ? "rgba(139, 148, 158, 0.35)" : (c.in_nucleus ? "#D0D7DE" : "#6E7681"))
+        );
+        txt.setAttribute("font-weight", isSelected ? "700" : "400");
+        txt.setAttribute("font-size", isActiveRing || isSelected ? "10" : "9");
+        txt.setAttribute("text-anchor", anc);
+        txt.textContent = label;
+        secGroup.appendChild(txt);
+
+        if (isActiveRing) {
+          secGroup.onmouseenter = () => {
+            if (!state.dialDragging && state.dialWordIdx !== i) {
+              state.dialWordIdx = i;
+              renderDialOverlay();
+            }
+          };
+          let secDownX = 0, secDownY = 0;
+          secGroup.onmousedown = (e) => {
+            secDownX = e.clientX;
+            secDownY = e.clientY;
+            startWheelDrag(e);
+          };
+          secGroup.onclick = (e) => {
+            e.stopPropagation();
+            if (ringIdx === 0 && Math.hypot(e.clientX - secDownX, e.clientY - secDownY) <= 5) {
+              commitStagedWordChain([c]);
+            }
+          };
+        }
+        svg.appendChild(secGroup);
+      });
+
+      for (let b = 0; b <= K; b++) {
+        const bDeg = startDeg - (b / K) * (startDeg - endDeg);
+        const bRad = DIAL_TO_RAD(bDeg);
+        const tk = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        tk.setAttribute("x1", ((R - 5) * Math.cos(bRad)).toFixed(2));
+        tk.setAttribute("y1", ((R - 5) * Math.sin(bRad)).toFixed(2));
+        tk.setAttribute("x2", ((R + 5) * Math.cos(bRad)).toFixed(2));
+        tk.setAttribute("y2", ((R + 5) * Math.sin(bRad)).toFixed(2));
+        tk.setAttribute("stroke", isActiveRing ? "#D0D7DE" : "rgba(208, 215, 222, 0.25)");
+        tk.setAttribute("stroke-width", "1.2");
+        svg.appendChild(tk);
+      }
+    });
+
+    const ringRadii = rings.map(rg => rg.radius);
+    const rFrac = Math.min(1, Math.hypot(bx, by) / Math.max(RING_BASE_R, outerR));
+    appendCrosshairs(svg, bx, by);
+    appendRadialNeedle(svg, bx, by, outerR, false, ringRadii);
+    appendPieBall(svg, bx, by, rFrac, "#E05246", startWheelDrag);
+
+    const staged = getStagedWordChain();
+    const selVis = hoveredWordCand ? escapeHtml(JSON.stringify(hoveredWordCand.token)) : "--";
+    const selProb = hoveredWordCand ? `${hoveredWordCand.prob.toFixed(1)}%` : "";
+    const statusLine = staged.length > 0
+      ? `<span style="color:#6E7681;">phrase:</span> <span style="color:#22C55E; font-weight:700;">${escapeHtml(JSON.stringify(staged.map(w => w.token).join("")))}</span> <span style="color:#6E7681;">· release click to add (pull inward to undo ring)</span>`
+      : `<span style="color:#6E7681;">next word:</span> <span style="color:#22C55E; font-weight:700;">${selVis}</span> <span style="color:#F0F6FC; font-weight:700;">${selProb}</span> <span style="color:#6E7681;">· drag past ring to grow options</span>`;
+
+    actions.style.top = `${16 + outerR + 48}px`;
+    actions.innerHTML = `
+      <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+        <div>${statusLine}</div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <span class="dial-micro-btn" onclick="backToAxes()">[← axes]</span>
+          <span class="dial-micro-btn" onclick="backToSteer()">[← steer]</span>
+          <span class="dial-micro-btn" id="wheelMoreTopK">[T/K/p]</span>
+          <span class="dial-micro-btn" onclick="closeDial()">[done]</span>
+        </div>
+      </div>
+    `;
+    wireWheelPredClicks(actions);
+  }
+}
+
+function renderWheelPredRow() {
+  if (!state.lastTopK || state.lastTopK.length === 0) return "";
+  const items = state.lastTopK.slice(0, 5);
+  return `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center; padding-top:4px; border-top:1px solid #161B22;">` +
+    `<span style="color:#484F58; font-size:10px;">next:</span>` +
+    items.map(c => {
+      const col = !c.in_nucleus ? "#484F58" : (c.rank === 1 ? "#22C55E" : "#58A6FF");
+      const tokVis = escapeHtml(c.token.replace(/\n/g, "\\n"));
+      return `<span class="hud-btn wheel-cand" data-tid="${c.id}" style="color:${col}; border-bottom:1px solid ${c.in_nucleus ? col : "transparent"}; padding:1px 3px;">${c.rank}.${tokVis} <span style="color:#6E7681;font-size:9px;">${c.prob.toFixed(0)}%</span></span>`;
+    }).join("") +
+    `<span class="hud-btn" id="wheelMoreTopK" style="color:#6E7681; font-size:10px;">[T/K/p]</span>` +
+  `</div>`;
+}
+
+function wireWheelPredClicks(container) {
+  container.querySelectorAll(".wheel-cand").forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      sfx.click(1550, 0.014, 0.05);
+      startGen(1, parseInt(el.dataset.tid, 10));
+    };
+  });
+  const more = container.querySelector("#wheelMoreTopK");
+  if (more) {
+    more.onclick = (e) => {
+      e.stopPropagation();
+      renderTopKModal();
+      document.getElementById("topkModal").classList.add("open");
+    };
+  }
+}
+
+window.backToAxes = () => {
+  sfx.click(1200, 0.01, 0.04);
+  state.ringFetchSeq++;
+  state.wordRings = [];
+  clearWheelGhostPreview();
+  state.dialLevel = 1;
+  syncDialBallToCurrentState();
+  renderDialOverlay();
+};
+window.backToSteer = () => {
+  sfx.click(1300, 0.01, 0.04);
+  state.ringFetchSeq++;
+  state.wordRings = [];
+  clearWheelGhostPreview();
+  state.dialLevel = 2;
+  syncDialBallToCurrentState();
+  renderDialOverlay();
+};
+window.openWordWheel = () => {
+  sfx.click(1500, 0.012, 0.05);
+  state.dialLevel = 3;
+  state.dialWaitReleaseForRing = false;
+  resetWordRingsFromTopK();
+  syncDialBallToCurrentState();
+  renderDialOverlay();
+};
+window.clearCurrentAxisSteer = () => {
+  const axes = state.axes.length ? state.axes : FALLBACK_AXES;
+  const ax = axes.find(a => a.id === state.dialAxisId) || axes[0];
+  state.activeSteers.delete(ax.id);
+  state.dialBallPos = { x: 0, y: 12 };
+  sfx.click(900, 0.01, 0.04);
+  renderRightMarginTags();
+  renderLaserRaysAndTraces();
+  updateMicroHud();
+  invalidatePrefetch();
+  inspectCursor();
+  renderDialOverlay();
+};
+window.closeDial = () => {
+  state.dialDragging = false;
+  state.dialWaitReleaseForRing = false;
+  state.ringFetchSeq++;
+  state.wordRings = [];
+  clearWheelGhostPreview();
+  state.dialOpen = false;
+  document.getElementById("dialAnchor").style.display = "none";
+  renderInlineCandStrip();
+};
+window.openCustomAxis = () => {
+  document.getElementById("axisModal").classList.add("open");
+};
+
+// =========================================================================
+// Bottom Micro-HUD + Modals (Top-K, Multiverse 3x3 Tree, Prompt, Custom Axis)
+// =========================================================================
+function updateMicroHud() {
+  document.getElementById("hudLatency").textContent = `${state.lastLatencyMs || 0}ms/t`;
+  document.getElementById("hudTokens").textContent = state.cursorPos;
+  const undoBtn = document.getElementById("hudUndo");
+  undoBtn.style.display = state.undoStack.length > 0 ? "inline" : "none";
+  document.getElementById("hudBoxes").textContent = state.railBoxes.length;
+  document.getElementById("hudSteers").textContent = state.activeSteers.size;
+  document.getElementById("hudPins").textContent = state.pinnedTokens.size;
+  document.getElementById("hudTemp").textContent = state.temperature.toFixed(2);
+  document.getElementById("hudK").textContent = state.topK === 0 ? "all" : state.topK;
+  document.getElementById("hudP").textContent = state.topP.toFixed(2).replace(/^0/, "");
+}
+
+function renderTopKModal() {
+  document.getElementById("topkCursorLbl").textContent = state.cursorPos;
+  document.getElementById("topkEntropyLbl").textContent = `H(p) = ${state.lastEntropy.toFixed(2)} bits`;
+  document.getElementById("modalTempVal").textContent = state.temperature.toFixed(2);
+  document.getElementById("modalTempSlider").value = state.temperature;
+  document.getElementById("modalTopKSelect").value = state.topK;
+  document.getElementById("modalTopPVal").textContent = state.topP.toFixed(2);
+  document.getElementById("modalTopPSlider").value = state.topP;
+
+  const wrap = document.getElementById("topkRowsContainer");
+  const maxP = Math.max(20, ...state.lastTopK.map(c => c.prob));
+  wrap.innerHTML = state.lastTopK.map(c => {
+    const col = !c.in_nucleus ? "#484F58" : (c.rank === 1 ? "var(--green)" : "var(--fg)");
+    const fillCol = !c.in_nucleus ? "#262B33" : (c.rank === 1 ? "var(--green)" : "var(--cyan)");
+    const badge = c.in_nucleus ? "" : ` <span style="color:var(--coral); font-size:10px;">[cut]</span>`;
+    return `
+    <div class="topk-row" data-tid="${c.id}" style="opacity:${c.in_nucleus ? "1" : "0.55"};">
+      <span style="color:${col}; font-weight:${c.rank === 1 ? "700" : "400"};">
+        ${c.rank}. ${escapeHtml(JSON.stringify(c.token))}${badge}
+      </span>
+      <div class="topk-track"><div class="topk-fill" style="width:${(c.prob / maxP) * 100}%; background:${fillCol};"></div></div>
+      <span style="text-align:right; color:var(--muted);">${c.prob.toFixed(1)}% · Σ${c.cum_prob}% · z=${c.logit.toFixed(1)}</span>
+    </div>
+  `;
+  }).join("");
+  wrap.querySelectorAll(".topk-row").forEach(row => {
+    row.onclick = () => {
+      document.getElementById("topkModal").classList.remove("open");
+      startGen(state.autoStreamOnScrub ? 35 : 1, parseInt(row.dataset.tid, 10));
+    };
+  });
+}
+
+async function openAndRenderTreeModal() {
+  document.getElementById("treeModal").classList.add("open");
+  document.getElementById("treeCursorLbl").textContent = state.cursorPos;
+  const svg = document.getElementById("treeSvg");
+  svg.innerHTML = `<text x="465" y="255" fill="#EAB308" text-anchor="middle" font-size="12">Expanding 3×3×3 KV-Cache Multiverse...</text>`;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/tree`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token_ids: state.pieces.slice(0, state.cursorPos).map(p => p.id),
+        temperature: state.temperature,
+        attn_biases: buildAttnBiasMap(),
+        steering: buildSteerPayload(),
+      }),
+    });
+    const tree = await res.json();
+    svg.innerHTML = "";
+
+    const rx = 90, ry = 255;
+    drawTreeNode(svg, rx, ry, 146, 52, tree.root_label, `ROOT (t=${tree.cursor_t})`, true, false, null);
+
+    const l1Ys = [90, 255, 420];
+    const l1X = 320, l2X = 590, l3X = 830;
+
+    (tree.children || []).forEach((n1, i1) => {
+      const y1 = l1Ys[i1];
+      const act1 = i1 === 0;
+      drawTreeEdge(svg, rx + 74, ry, l1X - 70, y1, act1);
+      drawTreeNode(svg, l1X, y1, 140, 48, JSON.stringify(n1.token), `${n1.prob}% z=${n1.logit}`, act1, !act1, () => jumpTreeBranch(n1.path_ids));
+
+      const offs = [-46, 0, 46];
+      (n1.children || []).forEach((n2, i2) => {
+        const y2 = y1 + offs[i2];
+        const act2 = act1 && i2 === 0;
+        drawTreeEdge(svg, l1X + 71, y1, l2X - 66, y2, act2);
+        drawTreeNode(svg, l2X, y2, 132, 36, JSON.stringify(n2.token), `p=${n2.prob}%`, act2, !act1, () => jumpTreeBranch(n2.path_ids));
+
+        drawTreeEdge(svg, l2X + 67, y2, l3X - 62, y2, act2);
+        drawTreeNode(svg, l3X, y2, 124, 34, n2.preview_text, `t+4`, act2, !act2, () => jumpTreeBranch(n2.preview_ids));
+      });
+    });
+  } catch (err) {
+    svg.innerHTML = `<text x="465" y="255" fill="#EF4444" text-anchor="middle" font-size="12">Backend offline — start server.py to compute live 3×3 branches.</text>`;
+  }
+}
+
+function drawTreeEdge(svg, x1, y1, x2, y2, active) {
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const mx = (x1 + x2) / 2;
+  p.setAttribute("d", `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`);
+  p.setAttribute("fill", "none");
+  p.setAttribute("stroke", active ? "#22C55E" : "#262B33");
+  p.setAttribute("stroke-width", active ? "1.8" : "1.0");
+  svg.appendChild(p);
+}
+
+function drawTreeNode(svg, cx, cy, w, h, title, sub, active, dim, onClick) {
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.style.cursor = onClick ? "pointer" : "default";
+  const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  r.setAttribute("x", cx - w / 2); r.setAttribute("y", cy - h / 2);
+  r.setAttribute("width", w); r.setAttribute("height", h);
+  r.setAttribute("fill", active ? "#06190E" : "#000000");
+  r.setAttribute("stroke", active ? "#22C55E" : (dim ? "#2D333B" : "#58A6FF"));
+  r.setAttribute("stroke-width", active ? "1.6" : "1.0");
+  g.appendChild(r);
+
+  const t1 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  t1.setAttribute("x", cx); t1.setAttribute("y", cy - 3);
+  t1.setAttribute("text-anchor", "middle");
+  t1.setAttribute("fill", active ? "#FFF" : (dim ? "#8B949E" : "#D0D7DE"));
+  t1.setAttribute("font-size", "11");
+  t1.textContent = title.length > 15 ? title.slice(0, 14) + "…" : title;
+  g.appendChild(t1);
+
+  const t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  t2.setAttribute("x", cx); t2.setAttribute("y", cy + 11);
+  t2.setAttribute("text-anchor", "middle");
+  t2.setAttribute("fill", active ? "#22C55E" : (dim ? "#484F58" : "#58A6FF"));
+  t2.setAttribute("font-size", "9");
+  t2.textContent = sub;
+  g.appendChild(t2);
+
+  if (onClick) g.onclick = onClick;
+  svg.appendChild(g);
+}
+
+async function jumpTreeBranch(tokenIds) {
+  document.getElementById("treeModal").classList.remove("open");
+  state.pieces = state.pieces.slice(0, state.cursorPos);
+  for (const tid of tokenIds) {
+    await new Promise(resolve => {
+      pendingStepResolve = resolve;
+      startGen(1, tid);
+    });
+  }
+  await inspectCursor();
+}
+
+// =========================================================================
+// Event Wiring
+// =========================================================================
+document.getElementById("hudGenBtn").onclick = () => {
+  if (state.isGenerating) stopGen();
+  else startGen(45);
+};
+
+document.getElementById("hudSteerBtn").onclick = () => {
+  sfx.click(1400, 0.012, 0.04);
+  state.dialOpen = !state.dialOpen;
+  document.getElementById("dialAnchor").style.display = state.dialOpen ? "block" : "none";
+  if (state.dialOpen) {
+    document.getElementById("inlineCandStrip").style.display = "none";
+    syncDialBallToCurrentState();
+    renderDialOverlay();
+  } else {
+    renderInlineCandStrip();
+  }
+};
+
+document.getElementById("stageScroll").addEventListener("wheel", handleReticleOrWheelScroll, { passive: false });
+document.getElementById("dialAnchor").addEventListener("wheel", handleReticleOrWheelScroll, { passive: false });
+document.getElementById("inlineCandStrip").addEventListener("wheel", handleReticleOrWheelScroll, { passive: false });
+
+document.getElementById("hudTempBtn").onclick = () => {
+  renderTopKModal();
+  document.getElementById("topkModal").classList.add("open");
+};
+
+document.getElementById("hudTreeBtn").onclick = () => openAndRenderTreeModal();
+document.getElementById("refreshTreeBtn").onclick = () => openAndRenderTreeModal();
+
+document.getElementById("hudPromptBtn").onclick = () => {
+  document.getElementById("promptTextarea").value = state.pieces.map(p => p.text).join("");
+  document.getElementById("promptModal").classList.add("open");
+};
+
+document.getElementById("presetSelect").onchange = (e) => {
+  const p = state.presets.find(x => x.id === e.target.value);
+  if (p) document.getElementById("promptTextarea").value = p.text;
+};
+
+document.getElementById("applyPromptBtn").onclick = () => {
+  const txt = document.getElementById("promptTextarea").value;
+  document.getElementById("promptModal").classList.remove("open");
+  mountText(txt, false);
+};
+
+document.getElementById("hudAutoBtn").onclick = (e) => {
+  state.autoStreamOnScrub = !state.autoStreamOnScrub;
+  document.getElementById("hudAutoTxt").textContent = state.autoStreamOnScrub ? "on" : "off";
+  e.currentTarget.classList.toggle("active", state.autoStreamOnScrub);
+};
+
+document.getElementById("hudUndo").onclick = (e) => {
+  e.stopPropagation();
+  restoreUndoSnapshot();
+};
+
+document.getElementById("hudAudioBtn").onclick = (e) => {
+  sfx.on = !sfx.on;
+  document.getElementById("hudAudioTxt").textContent = sfx.on ? "on" : "off";
+  e.currentTarget.classList.toggle("active", sfx.on);
+};
+
+document.getElementById("modalTempSlider").oninput = (e) => {
+  state.temperature = parseFloat(e.target.value);
+  document.getElementById("modalTempVal").textContent = state.temperature.toFixed(2);
+  updateMicroHud();
+};
+document.getElementById("modalTempSlider").onchange = () => {
+  invalidatePrefetch();
+  inspectCursor().then(renderTopKModal);
+};
+document.getElementById("modalTopKSelect").onchange = (e) => {
+  state.topK = parseInt(e.target.value, 10);
+  updateMicroHud();
+  invalidatePrefetch();
+  inspectCursor().then(renderTopKModal);
+};
+document.getElementById("modalTopPSlider").oninput = (e) => {
+  state.topP = parseFloat(e.target.value);
+  document.getElementById("modalTopPVal").textContent = state.topP.toFixed(2);
+  updateMicroHud();
+};
+document.getElementById("modalTopPSlider").onchange = () => {
+  invalidatePrefetch();
+  inspectCursor().then(renderTopKModal);
+};
+document.getElementById("openCustomVecFromModal").onclick = () => {
+  document.getElementById("topkModal").classList.remove("open");
+  document.getElementById("axisModal").classList.add("open");
+};
+
+document.getElementById("saveCustomAxisBtn").onclick = async () => {
+  const id = document.getElementById("custAxisId").value;
+  const pos = document.getElementById("custAxisPos").value;
+  const neg = document.getElementById("custAxisNeg").value;
+  const res = await fetch(`${API_BASE}/api/axis/custom`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, label: id, pos_prompt: pos, neg_prompt: neg, color: "#22C55E" }),
+  });
+  const data = await res.json();
+  state.axes = data.axes;
+  state.dialAxisId = data.axis.id;
+  state.dialOpen = true;
+  state.dialLevel = 2;
+  document.getElementById("axisModal").classList.remove("open");
+  document.getElementById("dialAnchor").style.display = "block";
+  syncDialBallToCurrentState();
+  renderDialOverlay();
+};
+
+document.querySelectorAll("[data-close]").forEach(btn => {
+  btn.onclick = () => document.getElementById(btn.dataset.close).classList.remove("open");
+});
+
+window.addEventListener("keydown", (e) => {
+  const inInput = document.activeElement.tagName === "TEXTAREA" || document.activeElement.tagName === "INPUT";
+  const modalOpen = document.querySelector(".overlay-backdrop.open") !== null;
+  if (e.key === "Escape") {
+    document.querySelectorAll(".overlay-backdrop").forEach(m => m.classList.remove("open"));
+    closeDial();
+  } else if (inInput || modalOpen) {
+    return;
+  } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+    e.preventDefault();
+    restoreUndoSnapshot();
+  } else if (e.key === " ") {
+    e.preventDefault();
+    document.getElementById("hudSteerBtn").click();
+  } else if (e.key === "ArrowLeft") {
+    e.preventDefault();
+    scrubTo(state.cursorPos - 1);
+  } else if (e.key === "ArrowRight") {
+    e.preventDefault();
+    if (state.cursorPos < state.pieces.length) scrubTo(state.cursorPos + 1);
+    else startGen(1);
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    scrubTo(state.cursorPos - 12);
+  } else if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (state.cursorPos < state.pieces.length) scrubTo(state.cursorPos + 12);
+    else startGen(15);
+  }
+});
+
+window.addEventListener("resize", () => renderAll());
+
+document.addEventListener("mousedown", (e) => {
+  if (!state.dialOpen) return;
+  if (
+    e.target.closest("#dialAnchor") ||
+    e.target.closest("#inlineReticle") ||
+    e.target.closest("#hudSteerBtn") ||
+    e.target.closest(".margin-tag") ||
+    e.target.closest(".overlay-backdrop")
+  ) {
+    return;
+  }
+  closeDial();
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+boot();
+</script>
+</body>
+</html>

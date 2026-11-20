@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Master 3D Transformer Architecture Playground</title>
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: rgba(11, 15, 25, 0.82);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-active: rgba(0, 242, 254, 0.4);
+      --primary: #00f2fe;
+      --secondary: #a855f7;
+      --gold: #f59e0b;
+      --emerald: #00f5a0;
+      --crimson: #ef4444;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      user-select: none;
+    }
+
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      cursor: grab;
+    }
+
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+
+    .glass {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+      pointer-events: auto;
+    }
+
+    /* Top Floating Ribbon HUD */
+    .hud-top {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .brand {
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 10px var(--primary);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.4;
+        transform: scale(0.8);
+      }
+    }
+
+    .top-controls {
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Left Minimalist Layer Stepper Dock */
+    .hud-left {
+      position: absolute;
+      top: 74px;
+      left: 14px;
+      width: 220px;
+      max-height: calc(100vh - 160px);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 10;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+
+    .layer-step-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: #94a3b8;
+      padding: 7px 10px;
+      border-radius: 7px;
+      font-size: 11px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .layer-step-btn:hover {
+      background: rgba(0, 242, 254, 0.12);
+      border-color: rgba(0, 242, 254, 0.3);
+      color: #fff;
+    }
+
+    .layer-step-btn.active {
+      background: rgba(0, 242, 254, 0.18);
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
+    }
+
+    .step-tag {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.06);
+      font-family: monospace;
+      color: #cbd5e1;
+    }
+
+    /* Bottom-Right Compact Inspection Drawer */
+    .hud-inspect {
+      position: absolute;
+      bottom: 68px;
+      right: 14px;
+      width: 320px;
+      padding: 14px 16px;
+      z-index: 10;
+      border-left: 3px solid var(--primary);
+      transition: all 0.3s ease;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      font-family: monospace;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .badge-cyan {
+      background: rgba(0, 242, 254, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(0, 242, 254, 0.3);
+    }
+
+    .badge-gold {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--gold);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-purple {
+      background: rgba(168, 85, 247, 0.15);
+      color: var(--secondary);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    .badge-emerald {
+      background: rgba(0, 245, 160, 0.15);
+      color: var(--emerald);
+      border: 1px solid rgba(0, 245, 160, 0.3);
+    }
+
+    .formula-box {
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+      font-size: 11px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 6px 10px;
+      border-radius: 6px;
+      color: #38bdf8;
+      margin: 6px 0 8px;
+      line-height: 1.4;
+      overflow-x: auto;
+    }
+
+    /* Bottom Minimalist Status Bar */
+    .hud-bottom {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      right: 14px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .token-chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-family: monospace;
+      color: #facc15;
+    }
+
+    button {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text);
+      padding: 6px 11px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    button:hover {
+      background: rgba(0, 242, 254, 0.15);
+      border-color: var(--primary);
+    }
+
+    button.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(2, 132, 199, 0.4);
+    }
+
+    button.training-active {
+      background: #b91c1c;
+      border-color: #f87171;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(185, 28, 28, 0.4);
+    }
+
+    .help-tooltip {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  </style>
+
+  <!-- Three.js v0.160.0 Import Map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+
+<body>
+
+  <!-- Fullscreen 3D Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- Top Floating Ribbon -->
+  <div class="hud-top">
+    <div class="glass brand">
+      <div class="pulse-dot"></div>
+      <div>
+        <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+          Transformer Architecture Playground
+        </div>
+        <div style="font-size: 10px; color: var(--text-muted);">
+          Brendan Bycroft / Neural Playground Standard
+        </div>
+      </div>
+    </div>
+
+    <div class="glass top-controls">
+      <button id="modeInference" class="active">
+        <span>⚡</span> Inference Mode
+      </button>
+      <button id="modeTraining">
+        <span>🎓</span> Training Mode (Backprop)
+      </button>
+      <div style="width: 1px; height: 18px; background: rgba(255,255,255,0.1); margin: 0 2px;"></div>
+      <button id="playPauseBtn" class="active">
+        <span>⏸</span> Pause Flow
+      </button>
+      <button id="slowmoBtn">
+        <span>⏱</span> 0.1x Slow-Mo: OFF
+      </button>
+      <button id="resetCamBtn">
+        <span>🔄</span> Reset Camera
+      </button>
+    </div>
+  </div>
+
+  <!-- Left Stepper Dock -->
+  <div class="glass hud-left">
+    <div class="nav-label">Layer Stepper (Click to Glide)</div>
+
+    <div class="layer-step-btn active" data-layer="overview">
+      <span>🌐 Macro Overview</span>
+      <span class="step-tag">FULL</span>
+    </div>
+
+    <div class="layer-step-btn" data-layer="embedding">
+      <span>1. Token & Pos Embedding</span>
+      <span class="step-tag">W_e + W_p</span>
+    </div>
+
+    <div class="layer-step-btn" data-layer="preln1">
+      <span>2. Pre-LN (RMSNorm 1)</span>
+      <span class="step-tag">NORM</span>
+    </div>
+
+    <div class="layer-step-btn" data-layer="attention">
+      <span>3. Multi-Head Attention</span>
+      <span class="step-tag">Q, K, V</span>
+    </div>
+
+    <div class="layer-step-btn" data-layer="add1">
+      <span>4. Residual Add 1 (⊕)</span>
+      <span class="step-tag">SKIP</span>
+    </div>
+
+    <div class="layer-step-btn" data-layer="preln2">
+      <span>5. Pre-LN (RMSNorm 2)</span>
+      <span class="step-tag">NORM</span>
+    </div>
+
+    <div class="layer-step-btn" data-layer="mlp">
+      <span>6. Feed-Forward MLP</span>
+      <span class="step-tag">4× FFN</span>
+    </div>
+
+    <div class="layer-step-btn" data-layer="add2">
+      <span>7. Residual Add 2 (⊕)</span>
+      <span class="step-tag">SKIP</span>
+    </div>
+
+    <div class="layer-step-btn" data-layer="logits">
+      <span>8. Final Norm & Logits</span>
+      <span class="step-tag">OUTPUT</span>
+    </div>
+
+    <div class="help-tooltip">
+      <span>💡</span> Drag mouse freely to rotate. Scroll to zoom.
+    </div>
+  </div>
+
+  <!-- Right Inspection Drawer -->
+  <div id="inspectPanel" class="glass hud-inspect">
+    <div id="layerBadge" class="badge badge-cyan">MACRO ARCHITECTURE</div>
+    <div id="layerTitle" style="font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px;">Macro Architecture
+      View</div>
+    <div id="tensorDimVal" style="font-size: 10px; font-family: monospace; color: var(--gold); margin-bottom: 4px;">
+      Shape: [Batch=1, Seq=3, Dim=768]</div>
+    <div id="layerFormula" class="formula-box">x_(l+1) = x_l + FFN(LN(x_l + MHA(LN(x_l))))</div>
+    <div id="layerDesc" style="font-size: 11px; line-height: 1.45; color: #cbd5e1;">
+      The complete decoder-only transformer. Tokens traverse embeddings, pass through multi-head attention and
+      feed-forward layers alongside the golden residual stream, and project to vocabulary logits.
+    </div>
+  </div>
+
+  <!-- Bottom Bar -->
+  <div class="glass hud-bottom">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span
+        style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Tokens:</span>
+      <span class="token-chip">"The"</span>
+      <span class="token-chip">"cat"</span>
+      <span class="token-chip">"sat"</span>
+      <span id="predictedChip" class="token-chip"
+        style="background: rgba(0, 245, 160, 0.18); border-color: #00f5a0; color: #00f5a0;">
+        ➔ Predicts: "on" (68%)
+      </span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px; font-family: monospace; font-size: 10px;">
+      <div id="lossTag" style="display: none; color: #f87171;">
+        LOSS: 1.384 | ∇_θ BACKPROP ACTIVE
+      </div>
+      <div style="color: var(--text-muted);">
+        FPS: <span id="fpsNum" style="color: #00f5a0;">60</span> • HEADS: <span style="color: var(--primary);">4</span>
+        • D_MODEL: <span style="color: var(--gold);">768</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Three.js Visualizer Engine -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // 1. Scene & Camera Setup
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x07090e);
+    scene.fog = new THREE.FogExp2(0x07090e, 0.007);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // Initial Camera Position perfectly framing the model
+    camera.position.set(22, 10, 32);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.35;
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    // OrbitControls with full free rotation & damping
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 1, 0);
+
+    // =========================================================================
+    // CRITICAL FIX: CAMERA GLIDE STATE (No lerp fighting with OrbitControls!)
+    // =========================================================================
+    let isGliding = false;
+    let glideTargetPos = camera.position.clone();
+    let glideTargetLook = controls.target.clone();
+
+    // When the user starts dragging or zooming with the mouse, IMMEDIATELY STOP ANY AUTO-GLIDE!
+    controls.addEventListener('start', () => {
+      isGliding = false;
+    });
+
+    // Studio Lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    keyLight.position.set(20, 30, 20);
+    keyLight.castShadow = true;
+    scene.add(keyLight);
+
+    const cyanLight = new THREE.DirectionalLight(0x00f2fe, 2.0);
+    cyanLight.position.set(-20, 10, -15);
+    scene.add(cyanLight);
+
+    const purpleLight = new THREE.PointLight(0xa855f7, 2.2, 50);
+    purpleLight.position.set(15, -4, 10);
+    scene.add(purpleLight);
+
+    // Floor Grid
+    const floor = new THREE.GridHelper(100, 50, 0x1e293b, 0x0c111a);
+    floor.position.y = -15;
+    scene.add(floor);
+
+    // PBR Materials
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      metalness: 0.85,
+      roughness: 0.2,
+      emissive: 0xf59e0b,
+      emissiveIntensity: 0.4
+    });
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x38bdf8,
+      metalness: 0.1,
+      roughness: 0.1,
+      transmission: 0.7,
+      transparent: true,
+      opacity: 0.8
+    });
+    const darkPlateMat = new THREE.MeshStandardMaterial({
+      color: 0x0f141e,
+      metalness: 0.9,
+      roughness: 0.3
+    });
+
+    const interactables = [];
+
+    // Helper: Texture Canvas for Matrix Slabs (Grid Cells)
+    function createGridTexture(rows, cols, primaryColor = "#00f2fe", bg = "#0f172a") {
+      const c = document.createElement('canvas');
+      c.width = 256;
+      c.height = 256;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, 256, 256);
+
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 2;
+
+      const cellW = 256 / cols;
+      const cellH = 256 / rows;
+
+      for (let r = 0; r < rows; r++) {
+        for (let cl = 0; cl < cols; cl++) {
+          ctx.strokeRect(cl * cellW, r * cellH, cellW, cellH);
+          if (Math.random() > 0.4) {
+            ctx.fillStyle = primaryColor;
+            ctx.globalAlpha = 0.2 + Math.random() * 0.5;
+            ctx.fillRect(cl * cellW + 2, r * cellH + 2, cellW - 4, cellH - 4);
+            ctx.globalAlpha = 1.0;
+          }
+        }
+      }
+      return new THREE.CanvasTexture(c);
+    }
+
+    // Helper: Sleek 3D Text Tag (Compact & Non-Obtrusive)
+    function makeTag(text, color = "#94a3b8") {
+      const c = document.createElement('canvas');
+      c.width = 240;
+      c.height = 50;
+      const ctx = c.getContext('2d');
+      ctx.font = "Bold 18px -apple-system, BlinkMacSystemFont, sans-serif";
+      ctx.fillStyle = color;
+      ctx.textAlign = "center";
+      ctx.fillText(text, 120, 32);
+      const tex = new THREE.CanvasTexture(c);
+      const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(4.5, 0.9, 1);
+      return sprite;
+    }
+
+    // =========================================================================
+    // 2. THE RESIDUAL STREAM (Golden Backbone Spine)
+    // =========================================================================
+    const resHighway = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 29, 20), goldMat);
+    resHighway.position.set(-10, 0.5, 0);
+    resHighway.userData = { layerKey: "residual" };
+    scene.add(resHighway);
+    interactables.push(resHighway);
+
+    const resTag = makeTag("Residual Stream", "#f59e0b");
+    resTag.position.set(-10, 16, 0);
+    scene.add(resTag);
+
+    // =========================================================================
+    // 3. LAYER 1: EMBEDDINGS (W_e + W_p)
+    // =========================================================================
+    const embedGroup = new THREE.Group();
+    embedGroup.position.set(0, -13, 0);
+
+    // 3 Token Slices
+    const tokenStrips = [
+      { name: "\"The\"", z: -3.2, col: 0x38bdf8 },
+      { name: "\"cat\"", z: 0, col: 0x38bdf8 },
+      { name: "\"sat\"", z: 3.2, col: 0x00f2fe }
+    ];
+
+    tokenStrips.forEach((tok, i) => {
+      const tex = createGridTexture(2, 8, "#38bdf8");
+      const mat = new THREE.MeshStandardMaterial({
+        map: tex,
+        color: tok.col,
+        emissive: tok.col,
+        emissiveIntensity: 0.3,
+        roughness: 0.3
+      });
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.6, 2.2), mat);
+      slab.position.set(-2, 0, tok.z);
+      slab.userData = { layerKey: "embedding" };
+      embedGroup.add(slab);
+      interactables.push(slab);
+
+      const tag = makeTag(tok.name, "#ffffff");
+      tag.position.set(-2, 0.8, tok.z);
+      embedGroup.add(tag);
+    });
+
+    const embedTag = makeTag("Embedding Table (W_e + W_p)", "#38bdf8");
+    embedTag.position.set(-2, -1.2, 0);
+    embedGroup.add(embedTag);
+
+    scene.add(embedGroup);
+
+    // =========================================================================
+    // 4. PRE-LAYERNORM 1 (RMSNorm)
+    // =========================================================================
+    const ln1 = new THREE.Mesh(new THREE.BoxGeometry(11, 0.5, 12), glassMat);
+    ln1.position.set(0, -8.5, 0);
+    ln1.userData = { layerKey: "preln1" };
+    scene.add(ln1);
+    interactables.push(ln1);
+
+    const ln1Tag = makeTag("Pre-LN 1 (RMSNorm)", "#38bdf8");
+    ln1Tag.position.set(0, -7.8, 6.2);
+    scene.add(ln1Tag);
+
+    // =========================================================================
+    // 5. CAUSAL MULTI-HEAD ATTENTION CORE
+    // =========================================================================
+    const mhaGroup = new THREE.Group();
+    mhaGroup.position.set(0, -2, 0);
+
+    // Projection Plates Q, K, V
+    const projs = [
+      { name: "W_Q", col: 0x00f2fe, x: -4.5 },
+      { name: "W_K", col: 0x00f5a0, x: 0 },
+      { name: "W_V", col: 0xa855f7, x: 4.5 }
+    ];
+    projs.forEach(p => {
+      const tex = createGridTexture(6, 6, p.col === 0x00f2fe ? "#00f2fe" : (p.col === 0x00f5a0 ? "#00f5a0" : "#a855f7"));
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(2.8, 3.4, 0.3), new THREE.MeshStandardMaterial({
+        map: tex,
+        color: p.col,
+        emissive: p.col,
+        emissiveIntensity: 0.3,
+        roughness: 0.3
+      }));
+      plate.position.set(p.x, -2, -4);
+      plate.userData = { layerKey: "attention" };
+      mhaGroup.add(plate);
+      interactables.push(plate);
+
+      const tag = makeTag(p.name, "#ffffff");
+      tag.position.set(p.x, 0.2, -4);
+      mhaGroup.add(tag);
+    });
+
+    // 4 Authentic Attention Head Matrices (3x3 with causal mask)
+    const headMeshes = [];
+    for (let h = 0; h < 4; h++) {
+      const hGrp = new THREE.Group();
+      const x = (h - 1.5) * 3.8;
+
+      const backing = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.2, 0.2), darkPlateMat);
+      hGrp.add(backing);
+      backing.userData = { layerKey: "attention" };
+      interactables.push(backing);
+
+      // 3x3 cells
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const isMasked = c > r;
+          const col = isMasked ? 0x080d1a : (h === 0 ? 0x00f2fe : 0xf59e0b);
+          const cell = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.1), new THREE.MeshStandardMaterial({
+            color: col,
+            emissive: col,
+            emissiveIntensity: isMasked ? 0.0 : 0.6,
+            roughness: 0.3
+          }));
+          cell.position.set((c - 1) * 0.95, (1 - r) * 0.95, 0.12);
+          hGrp.add(cell);
+        }
+      }
+
+      hGrp.position.set(x, 2.2, 0);
+      mhaGroup.add(hGrp);
+      headMeshes.push(hGrp);
+
+      const hTag = makeTag(`Head ${h + 1} (3×3)`, "#38bdf8");
+      hTag.position.set(x, 4.2, 0);
+      mhaGroup.add(hTag);
+    }
+
+    // Addition Node 1 (⊕)
+    const add1 = new THREE.Mesh(new THREE.SphereGeometry(0.9, 20, 20), goldMat);
+    add1.position.set(-10, 1.8, 0);
+    add1.userData = { layerKey: "add1" };
+    mhaGroup.add(add1);
+    interactables.push(add1);
+
+    const add1Tag = makeTag("⊕ ADD 1", "#f59e0b");
+    add1Tag.position.set(-10, 3.2, 0);
+    mhaGroup.add(add1Tag);
+
+    scene.add(mhaGroup);
+
+    // =========================================================================
+    // 6. PRE-LAYERNORM 2
+    // =========================================================================
+    const ln2 = new THREE.Mesh(new THREE.BoxGeometry(11, 0.5, 12), glassMat);
+    ln2.position.set(0, 5.5, 0);
+    ln2.userData = { layerKey: "preln2" };
+    scene.add(ln2);
+    interactables.push(ln2);
+
+    const ln2Tag = makeTag("Pre-LN 2", "#38bdf8");
+    ln2Tag.position.set(0, 6.2, 6.2);
+    scene.add(ln2Tag);
+
+    // =========================================================================
+    // 7. FEED-FORWARD NETWORK (MLP 4× EXPANSION PLAYGROUND)
+    // =========================================================================
+    const mlpGroup = new THREE.Group();
+    mlpGroup.position.set(0, 9.5, 0);
+
+    // 16 Neurons in a 2x8 grid
+    for (let i = 0; i < 16; i++) {
+      const col = i % 8;
+      const row = Math.floor(i / 8);
+      const isFire = (i % 3 !== 0);
+      const colr = isFire ? 0xec4899 : 0x1e293b;
+
+      const n = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 16), new THREE.MeshStandardMaterial({
+        color: colr,
+        emissive: colr,
+        emissiveIntensity: isFire ? 0.8 : 0.0,
+        roughness: 0.2
+      }));
+      n.position.set((col - 3.5) * 1.35, (row - 0.5) * 1.5, 0);
+      n.userData = { layerKey: "mlp" };
+      mlpGroup.add(n);
+      interactables.push(n);
+    }
+
+    const mlpTag = makeTag("MLP Feed-Forward (4× Expansion)", "#ec4899");
+    mlpTag.position.set(0, 2.2, 0);
+    mlpGroup.add(mlpTag);
+
+    // Addition Node 2 (⊕)
+    const add2 = new THREE.Mesh(new THREE.SphereGeometry(0.9, 20, 20), goldMat);
+    add2.position.set(-10, 0, 0);
+    add2.userData = { layerKey: "add2" };
+    mlpGroup.add(add2);
+    interactables.push(add2);
+
+    const add2Tag = makeTag("⊕ ADD 2", "#f59e0b");
+    add2Tag.position.set(-10, 1.4, 0);
+    mlpGroup.add(add2Tag);
+
+    scene.add(mlpGroup);
+
+    // =========================================================================
+    // 8. FINAL UNEMBEDDING & LOGIT HEAD (Top)
+    // =========================================================================
+    const logitsGroup = new THREE.Group();
+    logitsGroup.position.set(0, 15, 0);
+
+    const candidates = [
+      { word: "\"on\"", pct: "68%", h: 3.5, c: 0x00f5a0 },
+      { word: "\"down\"", pct: "18%", h: 1.8, c: 0x38bdf8 },
+      { word: "\"still\"", pct: "8%", h: 1.0, c: 0x64748b },
+      { word: "\"quietly\"", pct: "6%", h: 0.7, c: 0x475569 }
+    ];
+
+    candidates.forEach((cand, idx) => {
+      const x = (idx - 1.5) * 2.4;
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(1.5, cand.h, 1.5), new THREE.MeshStandardMaterial({
+        color: cand.c,
+        emissive: cand.c,
+        emissiveIntensity: idx === 0 ? 0.75 : 0.2,
+        roughness: 0.3
+      }));
+      bar.position.set(x, cand.h / 2, 0);
+      bar.userData = { layerKey: "logits" };
+      logitsGroup.add(bar);
+      interactables.push(bar);
+
+      const tag = makeTag(`${cand.word} (${cand.pct})`, cand.c === 0x00f5a0 ? "#00f5a0" : "#ffffff");
+      tag.position.set(x, cand.h + 0.8, 0);
+      logitsGroup.add(tag);
+    });
+
+    scene.add(logitsGroup);
+
+    // =========================================================================
+    // 9. DATA PACKETS & GRADIENT FLOW
+    // =========================================================================
+    const forwardPkt = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), new THREE.MeshStandardMaterial({
+      color: 0x00f2fe,
+      emissive: 0x00f2fe,
+      emissiveIntensity: 1.2
+    }));
+    scene.add(forwardPkt);
+
+    const gradPkt = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({
+      color: 0xef4444,
+      emissive: 0xef4444,
+      emissiveIntensity: 1.5
+    }));
+    gradPkt.visible = false;
+    scene.add(gradPkt);
+
+    const waypoints = [
+      new THREE.Vector3(-2, -13, 3.2),
+      new THREE.Vector3(-10, -11, 0),
+      new THREE.Vector3(0, -8.5, 0),
+      new THREE.Vector3(0, -2, 0),
+      new THREE.Vector3(-10, 0, 0),
+      new THREE.Vector3(0, 5.5, 0),
+      new THREE.Vector3(0, 9.5, 0),
+      new THREE.Vector3(-10, 9.5, 0),
+      new THREE.Vector3(0, 15, 0),
+      new THREE.Vector3(-3.6, 18.5, 0)
+    ];
+    const revWaypoints = [...waypoints].reverse();
+
+    let flowProg = 0;
+    let gradProg = 0;
+    let isFlowRunning = true;
+    let isSlowMo = false;
+    let activeMode = "inference";
+
+    // =========================================================================
+    // 10. CAMERA GLIDE DESTINATIONS (Safe Glide: Stops when reached or on drag)
+    // =========================================================================
+    const cameraViews = {
+      overview: { pos: new THREE.Vector3(22, 10, 32), look: new THREE.Vector3(0, 1, 0) },
+      embedding: { pos: new THREE.Vector3(8, -11, 14), look: new THREE.Vector3(0, -13, 0) },
+      preln1: { pos: new THREE.Vector3(12, -6, 14), look: new THREE.Vector3(0, -8.5, 0) },
+      attention: { pos: new THREE.Vector3(0, 0, 17), look: new THREE.Vector3(0, 0, 0) },
+      add1: { pos: new THREE.Vector3(-3, 2, 8), look: new THREE.Vector3(-10, 0, 0) },
+      preln2: { pos: new THREE.Vector3(12, 8, 14), look: new THREE.Vector3(0, 5.5, 0) },
+      mlp: { pos: new THREE.Vector3(0, 11, 15), look: new THREE.Vector3(0, 9.5, 0) },
+      add2: { pos: new THREE.Vector3(-3, 11, 8), look: new THREE.Vector3(-10, 9.5, 0) },
+      logits: { pos: new THREE.Vector3(0, 17, 13), look: new THREE.Vector3(0, 15, 0) }
+    };
+
+    function startCameraGlide(layerKey) {
+      const v = cameraViews[layerKey] || cameraViews.overview;
+      glideTargetPos = v.pos.clone();
+      glideTargetLook = v.look.clone();
+      isGliding = true;
+
+      document.querySelectorAll('.layer-step-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.layer === layerKey);
+      });
+    }
+
+    // =========================================================================
+    // 11. INSPECTION TELEMETRY CONTENT
+    // =========================================================================
+    const layerInfo = {
+      overview: {
+        badge: "MACRO ARCHITECTURE",
+        title: "Macro Architecture View",
+        shape: "Shape: [Batch=1, Seq=3, Dim=768]",
+        formula: "x_(l+1) = x_l + FFN(LN(x_l + MHA(LN(x_l))))",
+        desc: "The complete decoder-only transformer. Tokens traverse embeddings, pass through multi-head attention and feed-forward layers alongside the golden residual stream, and project to vocabulary logits."
+      },
+      embedding: {
+        badge: "DATA & EMBEDDING",
+        title: "Token & Positional Embedding",
+        shape: "W_e ∈ ℝ^(50,257 × 768), W_p ∈ ℝ^(T × 768)",
+        formula: "h_0 = W_e[token_id] + W_p[position]",
+        desc: "Converts discrete vocabulary tokens into high-dimensional vectors and adds positional frequencies so attention knows sequential order."
+      },
+      preln1: {
+        badge: "NORMALIZATION",
+        title: "Pre-LayerNorm 1 (RMSNorm)",
+        shape: "x ∈ ℝ^(1 × 3 × 768)",
+        formula: "RMSNorm(x) = (x / √(mean(x²) + ε)) ⊙ γ",
+        desc: "Normalizes the activations along the channel dimension before entering Multi-Head Attention. Stabilizes gradient scales."
+      },
+      attention: {
+        badge: "ATTENTION CORE",
+        title: "Causal Multi-Head Attention",
+        shape: "4 Heads, d_k = 192 each (Total = 768)",
+        formula: "Attention(Q,K,V) = Softmax( (QKᵀ) / √d_k + Mask ) V",
+        desc: "Computes pairwise token relationships across 4 parallel heads. The causal mask blocks future positions (j > i), ensuring autoregressive validity."
+      },
+      add1: {
+        badge: "RESIDUAL ADDITION",
+        title: "Skip Addition 1 (⊕)",
+        shape: "x ∈ ℝ^(1 × 3 × 768)",
+        formula: "x = x + MHA(LN(x))",
+        desc: "Adds contextualized attention vectors back into the main residual stream highway."
+      },
+      preln2: {
+        badge: "NORMALIZATION",
+        title: "Pre-LayerNorm 2",
+        shape: "x ∈ ℝ^(1 × 3 × 768)",
+        formula: "RMSNorm(x) = (x / √(mean(x²) + ε)) ⊙ γ",
+        desc: "Normalizes the residual stream activations before passing into the Feed-Forward Network."
+      },
+      mlp: {
+        badge: "FEED-FORWARD (FFN)",
+        title: "MLP 4× Channel Expansion",
+        shape: "Expanded Hidden Dim = 3072",
+        formula: "y = GELU(x W_1 + b_1) W_2 + b_2",
+        desc: "Projects representations into 4x wider neuron space (3072 channels). Active neurons fire with non-linear activation; negative states are pruned."
+      },
+      add2: {
+        badge: "RESIDUAL ADDITION",
+        title: "Skip Addition 2 (⊕)",
+        shape: "x ∈ ℝ^(1 × 3 × 768)",
+        formula: "x = x + MLP(LN(x))",
+        desc: "Folds processed MLP knowledge vectors back into the residual stream."
+      },
+      logits: {
+        badge: "UNEMBEDDING & LOGITS",
+        title: "Output Head & Probability Distribution",
+        shape: "Logits ∈ ℝ^(1 × 50,257)",
+        formula: "P(token) = Softmax(h_final W_uᵀ)",
+        desc: "Projects the final normalized state across the entire vocabulary of 50,257 tokens to compute output probabilities."
+      }
+    };
+
+    function updateCard(k) {
+      const d = layerInfo[k] || layerInfo.overview;
+      document.getElementById('layerBadge').innerText = d.badge;
+      document.getElementById('layerTitle').innerText = d.title;
+      document.getElementById('tensorDimVal').innerText = d.shape;
+      document.getElementById('layerFormula').innerText = d.formula;
+      document.getElementById('layerDesc').innerText = d.desc;
+    }
+
+    // =========================================================================
+    // 12. CONTROLS & LISTENERS
+    // =========================================================================
+    document.querySelectorAll('.layer-step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const k = btn.dataset.layer;
+        startCameraGlide(k);
+        updateCard(k);
+      });
+    });
+
+    document.getElementById('resetCamBtn').addEventListener('click', () => {
+      startCameraGlide('overview');
+      updateCard('overview');
+    });
+
+    document.getElementById('playPauseBtn').addEventListener('click', (e) => {
+      isFlowRunning = !isFlowRunning;
+      document.getElementById('playPauseBtn').innerHTML = isFlowRunning ? "<span>⏸</span> Pause Flow" : "<span>▶</span> Resume Flow";
+      e.currentTarget.classList.toggle('active', isFlowRunning);
+    });
+
+    document.getElementById('slowmoBtn').addEventListener('click', (e) => {
+      isSlowMo = !isSlowMo;
+      document.getElementById('slowmoBtn').innerHTML = isSlowMo ? "<span>⏱</span> 0.1x Slow-Mo: ON" : "<span>⏱</span> 0.1x Slow-Mo: OFF";
+      e.currentTarget.classList.toggle('active', isSlowMo);
+    });
+
+    document.getElementById('modeInference').addEventListener('click', () => {
+      activeMode = "inference";
+      document.getElementById('modeInference').classList.add('active');
+      document.getElementById('modeTraining').classList.remove('training-active');
+      document.getElementById('lossTag').style.display = "none";
+      document.getElementById('predictedChip').style.display = "inline-block";
+      gradPkt.visible = false;
+    });
+
+    document.getElementById('modeTraining').addEventListener('click', () => {
+      activeMode = "training";
+      document.getElementById('modeTraining').classList.add('training-active');
+      document.getElementById('modeInference').classList.remove('active');
+      document.getElementById('lossTag').style.display = "inline-block";
+      document.getElementById('predictedChip').style.display = "none";
+      gradPkt.visible = true;
+    });
+
+    // Raycasting for Click-to-Inspect
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    window.addEventListener('click', (e) => {
+      if (e.target.closest('.hud-top') || e.target.closest('.hud-left') || e.target.closest('.hud-inspect') || e.target.closest('.hud-bottom')) return;
+
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(interactables, true);
+
+      if (hits.length > 0) {
+        let h = hits[0].object;
+        while (h && !h.userData.layerKey && h.parent) h = h.parent;
+        if (h && h.userData.layerKey) {
+          startCameraGlide(h.userData.layerKey);
+          updateCard(h.userData.layerKey);
+        }
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // =========================================================================
+    // 13. ANIMATION LOOP (Butter Smooth Orbit & Controlled Glide)
+    // =========================================================================
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      // ONLY LERP IF CAMERA TRANSITION IS ACTIVE
+      if (isGliding) {
+        camera.position.lerp(glideTargetPos, 0.08);
+        controls.target.lerp(glideTargetLook, 0.08);
+
+        // Check if destination is reached within small threshold
+        if (camera.position.distanceTo(glideTargetPos) < 0.1 && controls.target.distanceTo(glideTargetLook) < 0.1) {
+          isGliding = false; // RELEASE CAMERA FULLY TO USER ORBIT CONTROLS!
+        }
+      }
+
+      // Update OrbitControls smoothly
+      controls.update();
+
+      // Data Flow
+      if (isFlowRunning) {
+        const speed = isSlowMo ? 0.025 : 0.12;
+
+        flowProg = (flowProg + delta * speed) % 1;
+        const total = waypoints.length - 1;
+        const idx = Math.floor(flowProg * total);
+        const t = (flowProg * total) - idx;
+        forwardPkt.position.lerpVectors(waypoints[idx], waypoints[Math.min(idx + 1, total)], t);
+
+        if (activeMode === "training") {
+          gradProg = (gradProg + delta * speed * 1.1) % 1;
+          const gIdx = Math.floor(gradProg * total);
+          const gt = (gradProg * total) - gIdx;
+          gradPkt.position.lerpVectors(revWaypoints[gIdx], revWaypoints[Math.min(gIdx + 1, total)], gt);
+        }
+
+        // Gentle head oscillation
+        headMeshes.forEach((hm, i) => {
+          hm.rotation.y = Math.sin(clock.getElapsedTime() * 1.2 + i) * 0.04;
+        });
+
+        // Pulsing residual stream
+        goldMat.emissiveIntensity = 0.35 + Math.sin(clock.getElapsedTime() * 2.5) * 0.15;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+
+</html>
