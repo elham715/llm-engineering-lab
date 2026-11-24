@@ -52,14 +52,18 @@ This laboratory takes the **first-principles path**:
 
 ---
 
-## 🧬 Sister Research Laboratory: Bio-ML & Mechanistic Interpretability
+## 🧬 Sister Research Laboratories: Bio-ML, Genomics & Computational Oncology
 
-> Exploring the intersection of Large Language Model Attention Mechanics and Structural Biochemistry / Oncology:
+> Exploring the intersection of Transformer Attention Mechanics, Structural Biochemistry, Non-coding Genomics, and Metabolic Dynamics:
 
 * **[`oncogenic-attention-disruption`](https://github.com/elham715/oncogenic-attention-disruption)**:
   * **ESM-2 Mechanistic Attention Disruption in Oncogenic Kinases**: Quantifying drug resistance in human EGFR ($C797S$, Osimertinib covalent anchor loss) directly through Meta's ESM-2 Transformer attention maps ($\Delta \mathbf{A}_{ij}$) and crystallographic PDB `2J6M` $C_\alpha$ distance alignment ($r_s = 0.4464$).
 * **[`cross-attention-drug-synergy`](https://github.com/elham715/cross-attention-drug-synergy)**:
   * **Bi-modal Cross-Attention for Anticancer Drug Sensitivity (PaccMann Modernization)**: Fusing small-molecule inhibitor SMILES with 128 landmark cancer genes across 8 canonical pathways to predict $\ln(\mathrm{IC}_{50})$ and visualize chemical warhead $\longleftrightarrow$ pathway cross-attention.
+* **[`promoter-variant-transformer`](https://github.com/elham715/promoter-variant-transformer)**:
+  * **RoPE Enformer for Non-Coding Cancer Driver Mutations**: Modeling the 512 bp human *TERT* promoter with Rotary Position Embeddings (RoPE), 4-layer 1D Conv-Transformer stem, and in silico saturation mutagenesis (ISM) capturing de novo GABP/ETS transcription factor motif creation at canonical hotspot mutations $C228T$ and $C250T$.
+* **[`biopath-reaction-transformer`](https://github.com/elham715/biopath-reaction-transformer)**:
+  * **Graphormer Topological Shortest-Path Distance (SPD) Attention for Metabolic Cascades**: Incorporating all-pairs Floyd-Warshall geodesic graph biases $\mathbf{B}_{\mathrm{SPD}(i,j)}$ into Multi-Head Attention to model 25 core human metabolites across Glycolysis, TCA, and the Urea cycle, predicting metabolic flux and the pathogenic $1.81\times$ surge of oncometabolite D-2-hydroxyglutarate (2-HG) triggered by *IDH1* $R132H$.
 
 ---
 
