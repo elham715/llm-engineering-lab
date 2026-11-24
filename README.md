@@ -58,6 +58,8 @@ This laboratory takes the **first-principles path**:
 
 * **[`oncogenic-attention-disruption`](https://github.com/elham715/oncogenic-attention-disruption)**:
   * **ESM-2 Mechanistic Attention Disruption in Oncogenic Kinases**: Quantifying drug resistance in human EGFR ($C797S$, Osimertinib covalent anchor loss) directly through Meta's ESM-2 Transformer attention maps ($\Delta \mathbf{A}_{ij}$) and crystallographic PDB `2J6M` $C_\alpha$ distance alignment ($r_s = 0.4464$).
+* **[`cross-attention-drug-synergy`](https://github.com/elham715/cross-attention-drug-synergy)**:
+  * **Bi-modal Cross-Attention for Anticancer Drug Sensitivity (PaccMann Modernization)**: Fusing small-molecule inhibitor SMILES with 128 landmark cancer genes across 8 canonical pathways to predict $\ln(\mathrm{IC}_{50})$ and visualize chemical warhead $\longleftrightarrow$ pathway cross-attention.
 
 ---
 
