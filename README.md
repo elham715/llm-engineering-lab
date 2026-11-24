@@ -52,6 +52,15 @@ This laboratory takes the **first-principles path**:
 
 ---
 
+## 🧬 Sister Research Laboratory: Bio-ML & Mechanistic Interpretability
+
+> Exploring the intersection of Large Language Model Attention Mechanics and Structural Biochemistry / Oncology:
+
+* **[`oncogenic-attention-disruption`](https://github.com/elham715/oncogenic-attention-disruption)**:
+  * **ESM-2 Mechanistic Attention Disruption in Oncogenic Kinases**: Quantifying drug resistance in human EGFR ($C797S$, Osimertinib covalent anchor loss) directly through Meta's ESM-2 Transformer attention maps ($\Delta \mathbf{A}_{ij}$) and crystallographic PDB `2J6M` $C_\alpha$ distance alignment ($r_s = 0.4464$).
+
+---
+
 ## 🎨 ChronoSteer Studio: Interactive Mechanistic Steering
 
 An interactive real-time mechanistic interpretability studio built with Starlette WebSockets and high-performance PyTorch CPU execution.
